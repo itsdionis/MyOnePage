@@ -1,6 +1,7 @@
 // Obsidian plugin: opens a note as a one-pager. The engine (md.js, engine.js, engine.css) runs unchanged
 // inside a sandboxed iframe; a shim stands in for the server: its fetch GET reads the note, PUT writes it.
-// scripts/plugin.ts puts ENGINE (the engine files as text) in front of this file, web.src.js (sharing) after it, and writes main.js.
+// scripts/plugin.ts puts seal.js (SEAL) and ENGINE (the engine files as text) in front of this file, web.src.js (sharing)
+// after it, and writes main.js.
 const { Plugin, TextFileView, MarkdownView, Notice, Modal, setIcon } = require('obsidian');
 
 const VIEW = 'one-pager';
@@ -122,7 +123,7 @@ class SharedPages extends Modal {
       .sort((a, b) => b[0].stat.mtime - a[0].stat.mtime);
     if (!rows.length) contentEl.createEl('p', { text: 'Nothing is shared yet. Use the share button on a page.' });
     for (const [f, fm] of rows) {
-      const id = String(fm.share), live = WEB_ID.test(id), eds = webList(fm.editors), vws = webList(fm.viewers);
+      const link = String(fm.share).trim(), live = webLive(link), eds = webList(fm.editors), vws = webList(fm.viewers);
       const row = contentEl.createDiv('one-pager-shared'), info = row.createDiv('one-pager-shared-info');
       info.createDiv({ cls: 'one-pager-shared-title', text: String(fm.title || f.basename) });
       const who = [...eds.map((e) => `✎ ${e}`), ...vws].join(' · ') || 'only you';
@@ -131,9 +132,9 @@ class SharedPages extends Modal {
       const btns = row.createDiv('one-pager-shared-btns');
       const btn = (icon, label, fn) => { const b = btns.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': label } }); setIcon(b, icon); b.onclick = fn; };
       btn('file-text', 'Open note', () => { this.app.workspace.getLeaf('tab').openFile(f); this.close(); });
-      if (live && web.server) {
-        btn('copy', 'Copy link', () => navigator.clipboard.writeText(web.link(id)).then(() => new Notice('Link copied')));
-        btn('globe', 'Open in browser', () => window.open(web.link(id)));
+      if (live) {
+        btn('copy', 'Copy link', () => navigator.clipboard.writeText(link).then(() => new Notice('Link copied')));
+        btn('globe', 'Open in browser', () => window.open(link));
       }
     }
   }
@@ -163,9 +164,9 @@ module.exports = class OnePagers extends Plugin {
     }));
     this.addCommand({ id: 'web-link', name: 'Copy web link of current note', checkCallback: (checking) => {
       const file = this.app.workspace.getActiveFile(), fm = file && this.app.metadataCache.getFileCache(file)?.frontmatter;
-      const id = fm && String(fm.share ?? '');
-      if (!id || !WEB_ID.test(id) || !this.web.server) return false;
-      if (!checking) navigator.clipboard.writeText(this.web.link(id)).then(() => new Notice('Link copied'));
+      const link = fm && String(fm.share ?? '').trim();
+      if (!webLive(link)) return false;
+      if (!checking) navigator.clipboard.writeText(link).then(() => new Notice('Link copied'));
       return true;
     } });
     this.addCommand({ id: 'web-sync', name: 'Sync shared pages now', callback: async () => {
@@ -226,7 +227,7 @@ module.exports = class OnePagers extends Plugin {
 
   shareState(file) {
     const v = this.app.metadataCache.getFileCache(file)?.frontmatter?.share;
-    return v == null ? 'none' : WEB_ID.test(String(v)) ? 'live' : 'pending';
+    return v == null ? 'none' : webLive(v) ? 'live' : 'pending';
   }
 
   // Shared: open the web copy. Not shared: add share: new and publish (only you can open it until
@@ -234,7 +235,7 @@ module.exports = class OnePagers extends Plugin {
   async shareOrOpen(file) {
     if (!file) return;
     const v = this.app.metadataCache.getFileCache(file)?.frontmatter?.share;
-    if (v != null && WEB_ID.test(String(v))) return window.open(this.web.link(String(v)));
+    if (webLive(v)) return window.open(String(v).trim());
     if (!this.web.ready) return new Notice('myone.page: set the server and token in the plugin settings first');
     if (v == null) await this.app.vault.process(file, (text) => webShare(text) != null ? text
       : text.startsWith('---\n') ? text.replace(/^---\n/, '---\nshare: new\neditors: []\nviewers: []\n')
