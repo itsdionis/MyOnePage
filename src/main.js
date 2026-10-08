@@ -92,8 +92,8 @@ class MyOnePageView extends TextFileView {
     if (!force && this.frame && this.shown === this.data) return;
     this.shown = this.data;
     this.contentEl.empty();
-    this.contentEl.addClass('one-pager-host');
-    this.frame = this.contentEl.createEl('iframe', { cls: 'one-pager-frame' });
+    this.contentEl.addClass('myone-page-host');
+    this.frame = this.contentEl.createEl('iframe', { cls: 'myone-page-frame' });
     this.frame.setAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox allow-downloads');
     this.frame.srcdoc = page(this.data);
   }
@@ -130,7 +130,7 @@ class SharedPages extends Modal {
     const { contentEl } = this, web = this.plugin.web;
     this.titleEl.setText('Shared on the web');
     const site = web.server || 'https://myone.page';
-    const top = contentEl.createDiv('one-pager-shared-site');
+    const top = contentEl.createDiv('myone-page-shared-site');
     top.createEl('a', { text: site.replace(/^https?:\/\//, ''), href: site });
     if (web.server) top.createEl('a', { text: 'Settings', href: `${site}/settings` });
     const rows = this.app.vault.getMarkdownFiles()
@@ -140,12 +140,12 @@ class SharedPages extends Modal {
     if (!rows.length) contentEl.createEl('p', { text: 'Nothing is shared yet. Use the share button on a page.' });
     for (const [f, fm] of rows) {
       const link = String(fm.share).trim(), live = webLive(link), eds = webList(fm.editors), vws = webList(fm.viewers);
-      const row = contentEl.createDiv('one-pager-shared'), info = row.createDiv('one-pager-shared-info');
-      info.createDiv({ cls: 'one-pager-shared-title', text: String(fm.title || f.basename) });
+      const row = contentEl.createDiv('myone-page-shared'), info = row.createDiv('myone-page-shared-info');
+      info.createDiv({ cls: 'myone-page-shared-title', text: String(fm.title || f.basename) });
       const who = [...eds.map((e) => `✎ ${e}`), ...vws].join(' · ') || 'only you';
-      info.createDiv({ cls: 'one-pager-shared-who', text: live ? who : 'publishing…' });
-      if ([...eds, ...vws].includes('anyone')) info.createSpan({ cls: 'one-pager-shared-open', text: 'anyone with the link' });
-      const btns = row.createDiv('one-pager-shared-btns');
+      info.createDiv({ cls: 'myone-page-shared-who', text: live ? who : 'publishing…' });
+      if ([...eds, ...vws].includes('anyone')) info.createSpan({ cls: 'myone-page-shared-open', text: 'anyone with the link' });
+      const btns = row.createDiv('myone-page-shared-btns');
       const btn = (icon, label, fn) => { const b = btns.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': label } }); setIcon(b, icon); b.onclick = fn; };
       btn('file-text', 'Open note', () => { this.app.workspace.getLeaf('tab').openFile(f); this.close(); });
       if (live) {
