@@ -1,7 +1,7 @@
 // Obsidian plugin: opens a note as a one-pager. The engine (md.js, engine.js, engine.css) runs unchanged
 // inside a sandboxed iframe; a shim stands in for the server: its fetch GET reads the note, PUT writes it.
 // esbuild bundles it into main.js, with the engine files as text (`?text`, see esbuild.config.mjs).
-import { Plugin, TextFileView, MarkdownView, Notice, Modal, setIcon } from 'obsidian';
+import { Plugin, TextFileView, MarkdownView, Notice, Modal, Platform, setIcon } from 'obsidian';
 import css from '../engine/engine.css?text';
 import md from '../engine/md.js?text';
 import js from '../engine/engine.js?text';
@@ -49,6 +49,17 @@ function page(md) {
 </body></html>`;
 }
 
+// Electron's save dialog and Node's fs, on desktop only; null when this Obsidian does not expose them.
+function desktopDialog() {
+  try {
+    const req = window.require;
+    const { remote } = req('electron');
+    return remote?.dialog ? { remote, path: req('path'), fs: req('fs') } : null;
+  } catch {
+    return null;
+  }
+}
+
 class MyOnePageView extends TextFileView {
   constructor(leaf, plugin) { super(leaf); this.plugin = plugin; this.frame = null; this.shown = null; }
   getViewType() { return VIEW; }
@@ -94,7 +105,7 @@ class MyOnePageView extends TextFileView {
     if (d.op === 'log') return this.plugin.log(`${this.file ? this.file.path : '?'}: ${d.body}`);
     if (d.op === 'sources') return reply({ sources: ENGINE });
     if (d.op === 'html') {
-      try { reply({ text: `saved ${await this.plugin.saveHTML(this.file, d.body)}` }); }
+      try { reply({ text: await this.plugin.saveHTML(this.file, d.body) }); }
       catch (err) { console.error(err); reply({ text: 'could not save the HTML file' }); }
       return;
     }
@@ -271,11 +282,25 @@ export default class MyOnePagePlugin extends Plugin {
   }
 
   // HTML button: <note>.html next to the note, replaced if it is there.
+  // Desktop: a save dialog that starts in Downloads (as Obsidian's own PDF export does). Mobile, or no dialog:
+  // next to the note in the vault. Returns the status line the page shows.
   async saveHTML(file, html) {
-    const path = file.path.replace(/\.md$/, '') + '.html', old = this.app.vault.getFileByPath(path);
-    if (old) await this.app.vault.modify(old, html); else await this.app.vault.create(path, html);
-    new Notice(`Saved ${path}`);
-    return path.split('/').pop();
+    const dialog = Platform.isDesktopApp && desktopDialog();
+    if (dialog) {
+      const { remote, path, fs } = dialog;
+      const r = await remote.dialog.showSaveDialog({
+        defaultPath: path.join(remote.app.getPath('downloads'), `${file.basename}.html`),
+        filters: [{ name: 'HTML', extensions: ['html'] }],
+      });
+      if (r.canceled || !r.filePath) return 'not saved';
+      await fs.promises.writeFile(r.filePath, html, 'utf8');
+      new Notice(`Saved ${r.filePath}`);
+      return `saved ${path.basename(r.filePath)}`;
+    }
+    const p = file.path.replace(/\.md$/, '') + '.html', old = this.app.vault.getFileByPath(p);
+    if (old) await this.app.vault.modify(old, html); else await this.app.vault.create(p, html);
+    new Notice(`Saved ${p}`);
+    return `saved ${p.split('/').pop()}`;
   }
 
   // Errors from the pages go to the console and to log.txt in the plugin folder.
