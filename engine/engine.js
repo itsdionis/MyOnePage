@@ -1288,7 +1288,7 @@ function applyMeta() {
 async function load() {
   if (SHARED) {
     DOC = MD.parse(document.getElementById('seed').textContent.replace(/<\\\/(script)/gi, '</$1')).doc;
-    document.body.classList.add('print');
+    document.body.classList.add('print', 'file');
     applyMeta();
     render();
     return;
@@ -1371,9 +1371,16 @@ document.getElementById('dl').onclick = () => {
   const b = new Blob([MD.serialize(DOC)], { type: 'text/markdown' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(b);
-  a.download = SLUG + '.md';
+  a.download = fileName('.md');
   a.click();
 };
+// On the web the slug is a random page id: name downloads after the title there.
+const fileName = (ext) =>
+  ((CFG.slug &&
+    String(DOC.meta?.title || '')
+      .replace(/[\\/:*?"<>|#%]+/g, ' ')
+      .trim()) ||
+    SLUG) + ext;
 // A host page that embeds the engine (the Obsidian plugin) may set window.HOST:
 // sources() -> {css, md, js} as text, and saveHTML(html) to keep the file itself.
 const HOST = window.HOST || null;
@@ -1413,7 +1420,7 @@ ${esc(js, 'script')}
   }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
-  a.download = SLUG + '.html';
+  a.download = fileName('.html');
   a.click();
 };
 document.addEventListener('keydown', (e) => {

@@ -1017,8 +1017,18 @@ body:not(.edit) [data-p][contenteditable='true'] {
   border-radius: 3px;
   background: rgba(125, 211, 160, 0.06);
 }
+/* read only (a viewer): the bar keeps only the HTML download; a downloaded file (body.file) has no bar */
 body.print #bar {
+  padding: 7px 9px;
+}
+body.print #bar > :not(#html),
+body.file #bar {
   display: none;
+}
+@media print {
+  #bar {
+    display: none;
+  }
 }
 
 /* side contents and tabs (nav() in engine.js) */
