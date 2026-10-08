@@ -1368,11 +1368,23 @@ document.getElementById('edit').onclick = (e) => {
 };
 document.getElementById('undo').onclick = undo;
 document.getElementById('dl').onclick = () => {
-  const b = new Blob([MD.serialize(DOC)], { type: 'text/markdown' });
+  const b = new Blob([exportText()], { type: 'text/markdown' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(b);
   a.download = fileName('.md');
   a.click();
+};
+// A download leaves the vault, so it never takes the owner-only frontmatter along: share: holds the page's
+// link with its key, editors:/viewers: who it is shared with. Same rule as the plugin's sync (plugin/src/web.js).
+const OWN_KEYS = /^(share|editors|viewers):/;
+const exportText = () => {
+  const L = (DOC.fm || '').split('\n'),
+    fm = [];
+  for (let i = 0; i < L.length; i++) {
+    if (!OWN_KEYS.test(L[i])) fm.push(L[i]);
+    else while (i + 1 < L.length && /^(\s|-)/.test(L[i + 1])) i++;
+  }
+  return MD.serialize({ ...DOC, fm: fm.join('\n') || undefined });
 };
 // On the web the slug is a random page id: name downloads after the title there.
 const fileName = (ext) =>
@@ -1404,7 +1416,7 @@ ${esc(css, 'style')}
 </style>
 </head>
 <body>
-<script type="text/markdown" id="seed" data-shared>${MD.serialize(DOC).replace(/<\/(script)/gi, '<\\/$1')}</script>
+<script type="text/markdown" id="seed" data-shared>${exportText().replace(/<\/(script)/gi, '<\\/$1')}</script>
 <script>
 ${esc(md, 'script')}
 </script>
