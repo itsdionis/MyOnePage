@@ -1,8 +1,13 @@
 // Obsidian plugin: opens a note as a one-pager. The engine (md.js, engine.js, engine.css) runs unchanged
 // inside a sandboxed iframe; a shim stands in for the server: its fetch GET reads the note, PUT writes it.
-// scripts/plugin.ts puts seal.js (SEAL) and ENGINE (the engine files as text) in front of this file, web.src.js (sharing)
-// after it, and writes main.js.
-const { Plugin, TextFileView, MarkdownView, Notice, Modal, setIcon } = require('obsidian');
+// esbuild bundles it into main.js, with the engine files as text (`?text`, see esbuild.config.mjs).
+import { Plugin, TextFileView, MarkdownView, Notice, Modal, setIcon } from 'obsidian';
+import css from '../engine/engine.css?text';
+import md from '../engine/md.js?text';
+import js from '../engine/engine.js?text';
+import { WebSync, WebSettings, webLive, webList, webShare } from './web.js';
+
+const ENGINE = { css, md, js };
 
 const VIEW = 'one-pager';
 const FLAG = 'myone.page';           // frontmatter `myone.page: true` opens the note as a page
@@ -20,7 +25,7 @@ const SHIM = `(function(){
   addEventListener('error',e=>log('error:',e.message,'at',e.lineno+':'+e.colno));
   addEventListener('unhandledrejection',e=>log('rejection:',e.reason&&(e.reason.stack||e.reason)));
   for(const k of ['replaceState','pushState']){ const f=history[k].bind(history); // the srcdoc URL may refuse a hash
-    history[k]=(...a)=>{ try{ f(...a); }catch(_){} }; }
+    history[k]=(...a)=>{ try{ f(...a); }catch{ /* the srcdoc URL may refuse a hash */ } }; }
   window.fetch=async(url,opt)=>{
     if(opt&&opt.method==='PUT'){ const r=await ask('put',opt.body); return new Response('',{status:r.ok?200:500}); }
     const r=await ask('get'); return new Response(r.text,{status:200});
@@ -141,7 +146,7 @@ class SharedPages extends Modal {
   onClose() { this.contentEl.empty(); }
 }
 
-module.exports = class OnePagers extends Plugin {
+export default class OnePagers extends Plugin {
   async onload() {
     this.settings = Object.assign({ server: '', every: 60 }, await this.loadData());
     this.web = new WebSync(this);
@@ -158,7 +163,7 @@ module.exports = class OnePagers extends Plugin {
       return true;
     } });
     this.addCommand({ id: 'web-list', name: 'List shared pages', callback: () => new SharedPages(this).open() });
-    this.addRibbonIcon('globe', 'myone.page: shared pages', () => new SharedPages(this).open());
+    this.addRibbonIcon('globe', 'Shared pages', () => new SharedPages(this).open());
     this.registerEvent(this.app.metadataCache.on('changed', (file) => {
       for (const leaf of this.app.workspace.getLeavesOfType(VIEW)) if (leaf.view.file === file) leaf.view.refreshShare();
     }));
@@ -170,8 +175,8 @@ module.exports = class OnePagers extends Plugin {
       return true;
     } });
     this.addCommand({ id: 'web-sync', name: 'Sync shared pages now', callback: async () => {
-      if (!this.web.ready) return new Notice('myone.page: set the server and token in the plugin settings first');
-      await this.web.run(true); new Notice(`myone.page: ${this.web.status}`);
+      if (!this.web.ready) return new Notice('MyOnePage: set the server and token in the plugin settings first');
+      await this.web.run(true); new Notice(`MyOnePage: ${this.web.status}`);
     } });
 
     this.markdownLeaves = new WeakMap(); // leaf -> path the user chose to read as Markdown
@@ -236,11 +241,11 @@ module.exports = class OnePagers extends Plugin {
     if (!file) return;
     const v = this.app.metadataCache.getFileCache(file)?.frontmatter?.share;
     if (webLive(v)) return window.open(String(v).trim());
-    if (!this.web.ready) return new Notice('myone.page: set the server and token in the plugin settings first');
+    if (!this.web.ready) return new Notice('MyOnePage: set the server and token in the plugin settings first');
     if (v == null) await this.app.vault.process(file, (text) => webShare(text) != null ? text
       : text.startsWith('---\n') ? text.replace(/^---\n/, '---\nshare: new\neditors: []\nviewers: []\n')
       : `---\nshare: new\neditors: []\nviewers: []\n---\n${text}`);
-    new Notice('myone.page: publishing. The link is copied when it is online; add editors: or viewers: to share it.');
+    new Notice('MyOnePage: publishing. The link is copied when it is online; add editors: or viewers: to share it.');
     this.web.soon(500);
   }
   schedule() {
@@ -260,7 +265,7 @@ module.exports = class OnePagers extends Plugin {
   }
 
   onunload() { // take the one-pager button off Markdown tabs
-    clearTimeout(this.web.timer);
+    window.clearTimeout(this.web.timer);
     for (const leaf of this.app.workspace.getLeavesOfType('markdown'))
       if (leaf.view.onePagerAction) { leaf.view.onePagerAction.remove(); leaf.view.onePagerAction = null; }
   }
@@ -275,7 +280,7 @@ module.exports = class OnePagers extends Plugin {
 
   // Errors from the pages go to the console and to log.txt in the plugin folder.
   log(msg) {
-    console.log('[one-pager]', msg);
+    console.error('[one-pager]', msg); // only page errors and sync failures come here
     const path = `${this.manifest.dir}/log.txt`, line = `${new Date().toISOString()} ${msg}\n`;
     this.app.vault.adapter.append(path, line).catch(() => {});
   }
@@ -294,4 +299,4 @@ module.exports = class OnePagers extends Plugin {
     const state = mode ? { file: file.path, mode, source: false } : { file: file.path };
     return leaf.setViewState({ type: 'markdown', state, active: true });
   }
-};
+}

@@ -1,8 +1,8 @@
 {
   "id": "myone-page",
-  "name": "myone.page",
-  "version": "0.1.0",
-  "minAppVersion": "1.5.0",
+  "name": "MyOnePage",
+  "version": "1.0.0",
+  "minAppVersion": "1.5.7",
   "description": "Turn a note into a one-page report that people can read, edit in place and share.",
   "author": "Dionis Lebedev",
   "isDesktopOnly": false

@@ -1,0 +1,53 @@
+name: Release
+
+# Push a tag equal to the version in manifest.json (e.g. 1.0.1, no "v"): this builds main.js and opens a draft release
+# with main.js, manifest.json and styles.css. Add notes and publish it on GitHub.
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check the tag matches manifest.json
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          version="$(node -p "require('./manifest.json').version")"
+          [ "$tag" = "$version" ] || { echo "tag $tag != manifest version $version"; exit 1; }
+
+      - name: Format, lint, check the sample page, build
+        run: pnpm verify
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          gh release create "$tag" --title "$tag" --draft main.js manifest.json styles.css
