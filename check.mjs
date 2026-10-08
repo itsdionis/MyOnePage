@@ -1,4 +1,4 @@
-// Checks one-pager Markdown files; with --fix, rewrites them in the format the page saves.
+// Checks MyOnePage Markdown files; with --fix, rewrites them in the format the page saves.
 //   node check.mjs [--fix] [--quiet] [note.md …]    (no files: every .md in ./pages, if there is one)
 // Exits 1 on an error or a file that is not formatted (and was not fixed). Runs next to engine/md.js (this repository)
 // or next to a copy of md.js (the vault's plugin folder, where the owner's install puts both).

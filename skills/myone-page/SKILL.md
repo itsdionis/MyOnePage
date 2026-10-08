@@ -1,11 +1,11 @@
 ---
 name: myone-page
-description: Write or edit a one-pager, an Obsidian note with `myone.page: true` that the MyOnePage plugin renders as a styled, editable page. Use when creating a one-pager, a brief, a strategy or town-hall page, turning notes into one, editing one, or fixing one that renders wrong or fails the check. Prefer it over custom HTML for text-first pages that should stay notes.
+description: Write or edit a MyOnePage, an Obsidian note with `myone.page: true` that the MyOnePage plugin renders as a styled, editable page. Use when creating a MyOnePage, a brief, a strategy or town-hall page, turning notes into one, editing one, or fixing one that renders wrong or fails the check. Prefer it over custom HTML for text-first pages that should stay notes.
 ---
 
-# Writing a one-pager
+# Writing a MyOnePage
 
-A one-pager is one Markdown note. In Obsidian, the MyOnePage plugin opens a note with `myone.page: true`
+A MyOnePage is one Markdown note. In Obsidian, the MyOnePage plugin opens a note with `myone.page: true`
 in its frontmatter as a styled page that can be edited in place (Obsidian's editing and reading views stay
 one click away). Every edit on the page rewrites the file in the canonical form shown here.
 
@@ -19,7 +19,7 @@ one click away). Every edit on the page rewrites the file in the canonical form 
 1. Write the file in the format below.
 2. Check it with the checker from the plugin repository (Node 18 or later, no install):
    `node <repo>/check.mjs <file>`; add `--fix` to rewrite it in canonical form.
-   Pass the note's path only: a folder glob also checks ordinary notes, which are not one-pager pages.
+   Pass the note's path only: a folder glob also checks ordinary notes, which are not MyOnePage pages.
    - `error` lines must be fixed. `warn` lines are usually a block that fell back to plain text.
    - `info: … plain text, not a styled block` lists every `p` block. Confirm each one is meant to be plain.
    - `not formatted` is harmless: run it again with `--fix` to rewrite it canonically.

@@ -414,6 +414,19 @@ export class WebSettings extends WEB.PluginSettingTab {
       p = this.plugin,
       sync = p.web;
     el.empty();
+    new WEB.Setting(el)
+      .setName('HTML export folder')
+      .setDesc('Where the HTML button saves <note>.html, relative to the vault. Empty: next to the note.')
+      .addText((t) =>
+        t
+          .setPlaceholder('Exports')
+          .setValue(p.settings.htmlFolder || '')
+          .onChange(async (v) => {
+            p.settings.htmlFolder = v.trim().replace(/^\/+|\/+$/g, '');
+            await p.saveSettings();
+          }),
+      );
+    new WEB.Setting(el).setName('Share on the web').setHeading();
     el.createEl('p', {
       text:
         'Share a note on the web: put "share: new" in its frontmatter, plus "editors:" and "viewers:" lists of ' +

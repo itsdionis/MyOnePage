@@ -1,7 +1,7 @@
-// Obsidian plugin: opens a note as a one-pager. The engine (md.js, engine.js, engine.css) runs unchanged
+// Obsidian plugin: opens a note as a MyOnePage. The engine (md.js, engine.js, engine.css) runs unchanged
 // inside a sandboxed iframe; a shim stands in for the server: its fetch GET reads the note, PUT writes it.
 // esbuild bundles it into main.js, with the engine files as text (`?text`, see esbuild.config.mjs).
-import { Plugin, TextFileView, MarkdownView, Notice, Modal, Platform, setIcon } from 'obsidian';
+import { Plugin, TextFileView, MarkdownView, Notice, Modal, normalizePath, setIcon } from 'obsidian';
 import css from '../engine/engine.css?text';
 import md from '../engine/md.js?text';
 import js from '../engine/engine.js?text';
@@ -47,17 +47,6 @@ function page(md) {
 <script>${esc(ENGINE.md, 'script')}</script>
 <script>${esc(ENGINE.js, 'script')}</script>
 </body></html>`;
-}
-
-// Electron's save dialog and Node's fs, on desktop only; null when this Obsidian does not expose them.
-function desktopDialog() {
-  try {
-    const req = window.require;
-    const { remote } = req('electron');
-    return remote?.dialog ? { remote, path: req('path'), fs: req('fs') } : null;
-  } catch {
-    return null;
-  }
 }
 
 class MyOnePageView extends TextFileView {
@@ -159,7 +148,7 @@ class SharedPages extends Modal {
 
 export default class MyOnePagePlugin extends Plugin {
   async onload() {
-    this.settings = Object.assign({ server: '', every: 60 }, await this.loadData());
+    this.settings = Object.assign({ server: '', every: 60, htmlFolder: '' }, await this.loadData());
     this.web = new WebSync(this);
     this.addSettingTab(new WebSettings(this.app, this));
     this.app.workspace.onLayoutReady(() => { this.schedule(); this.web.soon(3000); });
@@ -224,7 +213,7 @@ export default class MyOnePagePlugin extends Plugin {
       if (leaf && leaf.view.getViewType() === VIEW)
         menu.addItem((i) => i.setTitle('Open as Markdown').setIcon('file-text').onClick(() => this.asMarkdown(leaf, file)));
       else
-        menu.addItem((i) => i.setTitle('Open as one-pager').setIcon('layout-template')
+        menu.addItem((i) => i.setTitle('Open as MyOnePage').setIcon('layout-template')
           .onClick(() => leaf ? this.asPage(leaf, file) : this.app.workspace.getLeaf('tab').setViewState({ type: VIEW, state: { file: file.path }, active: true })));
     }));
 
@@ -275,37 +264,26 @@ export default class MyOnePagePlugin extends Plugin {
     }
   }
 
-  onunload() { // take the one-pager button off Markdown tabs
+  onunload() { // take the MyOnePage button off Markdown tabs
     window.clearTimeout(this.web.timer);
     for (const leaf of this.app.workspace.getLeavesOfType('markdown'))
       if (leaf.view.myOnePageAction) { leaf.view.myOnePageAction.remove(); leaf.view.myOnePageAction = null; }
   }
 
-  // HTML button: <note>.html next to the note, replaced if it is there.
-  // Desktop: a save dialog that starts in Downloads (as Obsidian's own PDF export does). Mobile, or no dialog:
-  // next to the note in the vault. Returns the status line the page shows.
+  // HTML button: <note>.html in the HTML export folder of the settings (created if missing), or next to the note
+  // when none is set; replaced if it is there. Returns the status line the page shows.
   async saveHTML(file, html) {
-    const dialog = Platform.isDesktopApp && desktopDialog();
-    if (dialog) {
-      const { remote, path, fs } = dialog;
-      const r = await remote.dialog.showSaveDialog({
-        defaultPath: path.join(remote.app.getPath('downloads'), `${file.basename}.html`),
-        filters: [{ name: 'HTML', extensions: ['html'] }],
-      });
-      if (r.canceled || !r.filePath) return 'not saved';
-      await fs.promises.writeFile(r.filePath, html, 'utf8');
-      new Notice(`Saved ${r.filePath}`);
-      return `saved ${path.basename(r.filePath)}`;
-    }
-    const p = file.path.replace(/\.md$/, '') + '.html', old = this.app.vault.getFileByPath(p);
+    const dir = normalizePath(this.settings.htmlFolder || file.parent?.path || '/');
+    if (dir !== '/' && !this.app.vault.getFolderByPath(dir)) await this.app.vault.createFolder(dir);
+    const p = normalizePath(`${dir === '/' ? '' : dir + '/'}${file.basename}.html`), old = this.app.vault.getFileByPath(p);
     if (old) await this.app.vault.modify(old, html); else await this.app.vault.create(p, html);
     new Notice(`Saved ${p}`);
-    return `saved ${p.split('/').pop()}`;
+    return `saved ${p}`;
   }
 
   // Errors from the pages go to the console and to log.txt in the plugin folder.
   log(msg) {
-    console.error('[one-pager]', msg); // only page errors and sync failures come here
+    console.error('[myone.page]', msg); // only page errors and sync failures come here
     const path = `${this.manifest.dir}/log.txt`, line = `${new Date().toISOString()} ${msg}\n`;
     this.app.vault.adapter.append(path, line).catch(() => {});
   }

@@ -2,7 +2,7 @@
 
 Turn a note into a one-page report that people can read, edit in place and share.
 
-A one-pager is an ordinary Markdown note. MyOnePage shows it as a styled page: a hero line, numbered parts, cards,
+A MyOnePage is an ordinary Markdown note. MyOnePage shows it as a styled page: a hero line, numbered parts, cards,
 big numbers, funnels, tables, timelines. You edit the text right on the page, and every edit is saved back to the
 note, so it stays a plain note you can still open, search and link as usual.
 
@@ -32,7 +32,8 @@ title: Q4 plan
 - Click any text on the page to edit it. Drag items to reorder them.
 - The buttons at the top of the tab switch between the page, reading view and editing view. **Cycle view: editing,
   reading, one-pager** does the same from the command palette.
-- **HTML** saves `<note>.html` next to the note: one read-only file you can send to anyone.
+- **HTML** saves `<note>.html`: one read-only file you can send to anyone. It goes next to the note, or to the
+  folder set in **HTML export folder** in the plugin settings.
 - The page follows Obsidian's light or dark theme.
 
 ### Blocks
@@ -58,10 +59,12 @@ Anything else is shown as plain text, exactly as written.
 ## Share on the web (optional)
 
 You can publish a page so that other people can read or edit it in a browser. This is off until you set it up.
+Everything above (pages, editing, HTML export, the Claude skill) is free and works without an account.
 
-- **An account is required.** Sharing needs an account on a sharing server, such as
-  [myone.page](https://myone.page) (sign-in with Google). Publishing on myone.page is currently by invitation. The
-  server is a separate service and is not part of this repository.
+- **Payment is required to publish.** Sharing needs an account on a sharing server, such as
+  [myone.page](https://myone.page) (sign-in with Google), where publishing is a paid plan. The people you share
+  with need only a Google account, or nothing for a page open to anyone. The server is a separate service and is
+  not part of this repository.
 - **Network use.** Once you enter a server and a token in the plugin settings, the plugin talks to that server and
   nothing else. It sends only notes that have `share:` in their frontmatter, and syncs them both ways (every 60
   seconds by default, and a few seconds after you stop typing in a shared note). Notes without `share:` never leave
