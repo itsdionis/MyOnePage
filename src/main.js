@@ -9,7 +9,7 @@ import { WebSync, WebSettings, webLive, webList, webShare } from './web.js';
 
 const ENGINE = { css, md, js };
 
-const VIEW = 'one-pager';
+const VIEW = 'myone-page';
 const FLAG = 'myone.page';           // frontmatter `myone.page: true` opens the note as a page
 const esc = (s, tag) => s.replace(new RegExp('</' + tag, 'gi'), '<\\/' + tag);
 
@@ -19,9 +19,9 @@ const SHIM = `(function(){
   addEventListener('message',e=>{ const d=e.data;
     if(e.source===parent&&d&&d.op==='theme') document.documentElement.dataset.theme=d.theme;
     if(e.source===parent&&d&&d.op==='reply'&&pend.has(d.n)){ pend.get(d.n)(d); pend.delete(d.n); } });
-  const ask=(op,body)=>new Promise(res=>{ const k=++n; pend.set(k,res); parent.postMessage({onepager:true,op,n:k,body},'*'); });
+  const ask=(op,body)=>new Promise(res=>{ const k=++n; pend.set(k,res); parent.postMessage({myonepage:true,op,n:k,body},'*'); });
   window.HOST={ sources:async()=>(await ask('sources')).sources, saveHTML:async(html)=>(await ask('html',html)).text };
-  const log=(...a)=>parent.postMessage({onepager:true,op:'log',body:a.map(String).join(' ')},'*');
+  const log=(...a)=>parent.postMessage({myonepage:true,op:'log',body:a.map(String).join(' ')},'*');
   addEventListener('error',e=>log('error:',e.message,'at',e.lineno+':'+e.colno));
   addEventListener('unhandledrejection',e=>log('rejection:',e.reason&&(e.reason.stack||e.reason)));
   for(const k of ['replaceState','pushState']){ const f=history[k].bind(history); // the srcdoc URL may refuse a hash
@@ -49,7 +49,7 @@ function page(md) {
 </body></html>`;
 }
 
-class OnePagerView extends TextFileView {
+class MyOnePageView extends TextFileView {
   constructor(leaf, plugin) { super(leaf); this.plugin = plugin; this.frame = null; this.shown = null; }
   getViewType() { return VIEW; }
   getDisplayText() { return this.file ? this.file.basename : 'myone.page'; }
@@ -89,7 +89,7 @@ class OnePagerView extends TextFileView {
 
   async onMessage(e) {
     const d = e.data;
-    if (!this.frame || e.source !== this.frame.contentWindow || !d || !d.onepager) return;
+    if (!this.frame || e.source !== this.frame.contentWindow || !d || !d.myonepage) return;
     const reply = (x) => this.frame.contentWindow.postMessage({ op: 'reply', n: d.n, ...x }, '*');
     if (d.op === 'log') return this.plugin.log(`${this.file ? this.file.path : '?'}: ${d.body}`);
     if (d.op === 'sources') return reply({ sources: ENGINE });
@@ -146,7 +146,7 @@ class SharedPages extends Modal {
   onClose() { this.contentEl.empty(); }
 }
 
-export default class OnePagers extends Plugin {
+export default class MyOnePagePlugin extends Plugin {
   async onload() {
     this.settings = Object.assign({ server: '', every: 60 }, await this.loadData());
     this.web = new WebSync(this);
@@ -180,7 +180,7 @@ export default class OnePagers extends Plugin {
     } });
 
     this.markdownLeaves = new WeakMap(); // leaf -> path the user chose to read as Markdown
-    this.registerView(VIEW, (leaf) => new OnePagerView(leaf, this));
+    this.registerView(VIEW, (leaf) => new MyOnePageView(leaf, this));
     this.registerEvent(this.app.workspace.on('css-change', () => { // the page follows the light/dark theme
       for (const leaf of this.app.workspace.getLeavesOfType(VIEW))
         leaf.view.frame?.contentWindow?.postMessage({ op: 'theme', theme: theme() }, '*');
@@ -193,7 +193,7 @@ export default class OnePagers extends Plugin {
       return true;
     } });
     this.addCommand({ id: 'cycle', name: 'Cycle view: editing, reading, one-pager', checkCallback: (checking) => {
-      const page = this.app.workspace.getActiveViewOfType(OnePagerView), md = this.app.workspace.getActiveViewOfType(MarkdownView);
+      const page = this.app.workspace.getActiveViewOfType(MyOnePageView), md = this.app.workspace.getActiveViewOfType(MarkdownView);
       const view = page || md; if (!view || !view.file) return false;
       if (checking) return true;
       if (page) this.asMarkdown(page.leaf, page.file, 'source');
@@ -202,7 +202,7 @@ export default class OnePagers extends Plugin {
       return true;
     } });
     this.addCommand({ id: 'markdown', name: 'Open current one-pager as Markdown', checkCallback: (checking) => {
-      const view = this.app.workspace.getActiveViewOfType(OnePagerView);
+      const view = this.app.workspace.getActiveViewOfType(MyOnePageView);
       if (!view) return false;
       if (!checking) this.asMarkdown(view.leaf, view.file);
       return true;
@@ -256,9 +256,9 @@ export default class OnePagers extends Plugin {
   sweep() {
     for (const leaf of this.app.workspace.getLeavesOfType('markdown')) {
       const view = leaf.view, file = view.file, flagged = !!file && this.flagged(file);
-      if (flagged && !view.onePagerAction && view.addAction)
-        view.onePagerAction = view.addAction('layout-template', 'myone.page view', () => view.file && this.asPage(leaf, view.file));
-      else if (!flagged && view.onePagerAction) { view.onePagerAction.remove(); view.onePagerAction = null; }
+      if (flagged && !view.myOnePageAction && view.addAction)
+        view.myOnePageAction = view.addAction('layout-template', 'myone.page view', () => view.file && this.asPage(leaf, view.file));
+      else if (!flagged && view.myOnePageAction) { view.myOnePageAction.remove(); view.myOnePageAction = null; }
       if (!flagged || this.markdownLeaves.get(leaf) === file.path) continue;
       this.asPage(leaf, file, leaf === this.app.workspace.getMostRecentLeaf());
     }
@@ -267,7 +267,7 @@ export default class OnePagers extends Plugin {
   onunload() { // take the one-pager button off Markdown tabs
     window.clearTimeout(this.web.timer);
     for (const leaf of this.app.workspace.getLeavesOfType('markdown'))
-      if (leaf.view.onePagerAction) { leaf.view.onePagerAction.remove(); leaf.view.onePagerAction = null; }
+      if (leaf.view.myOnePageAction) { leaf.view.myOnePageAction.remove(); leaf.view.myOnePageAction = null; }
   }
 
   // HTML button: <note>.html next to the note, replaced if it is there.

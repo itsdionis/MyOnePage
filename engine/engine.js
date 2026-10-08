@@ -1,5 +1,5 @@
 // page.html?p=<slug> renders and edits pages/<slug>.md. md.js (loaded first) reads and writes the Markdown.
-// A host may set window.ONEPAGER={data, slug} first (the web server does): data is the page's URL.
+// A host may set window.MYONEPAGE={data, slug} first (the web server does): data is the page's URL.
 // It may also set open(body)/seal(text), async, to decrypt what it loads and encrypt what it saves, and hash:
 // a fragment part (the key, "k=...") that the engine keeps in front of its own (#k=...&edit, #k=...&s3).
 document.body.insertAdjacentHTML(
@@ -22,7 +22,7 @@ const $ = (t, c, h) => {
   if (h != null) e.textContent = h;
   return e;
 };
-const CFG = window.ONEPAGER || {};
+const CFG = window.MYONEPAGE || {};
 const SLUG = CFG.slug || new URLSearchParams(location.search).get('p') || '';
 const DATA = CFG.data || `pages/${encodeURIComponent(SLUG)}.md`,
   LSKEY = SLUG + '-doc';

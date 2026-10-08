@@ -18,8 +18,10 @@ const WEB_ID = /^[A-Za-z0-9]{22}$/;
 const WEB_LINK = /^(https?:\/\/[^/\s]+)\/p\/([A-Za-z0-9_-]{16})\/([A-Za-z0-9]{22})#k=([A-Za-z0-9_-]{43})$/;
 const WEB_KEYS = /^(share|editors|viewers):/;
 // per-device localStorage: {server, acct, pages: {id: {path, base, version, key, conflict?}}}; base is plaintext
-const WEB_STATE = 'one-pager-web-2';
-const WEB_TOKEN = 'one-pager-token'; // per device too: data.json syncs with the vault, a secret must not
+const WEB_STATE = 'myone-page-web';
+const WEB_TOKEN = 'myone-page-token'; // per device too: data.json syncs with the vault, a secret must not
+// The keys before the rename; moved over once per device. Remove after every device has run a version with this.
+const WEB_OLD = { [WEB_STATE]: 'one-pager-web-2', [WEB_TOKEN]: 'one-pager-token' };
 
 function webId() {
   // 22 base62 characters, ~131 bits
@@ -157,6 +159,11 @@ export class WebSync {
   constructor(plugin) {
     this.plugin = plugin;
     this.app = plugin.app;
+    for (const [key, old] of Object.entries(WEB_OLD)) {
+      const v = this.app.loadLocalStorage(old);
+      if (v && !this.app.loadLocalStorage(key)) this.app.saveLocalStorage(key, v);
+      if (v) this.app.saveLocalStorage(old, null);
+    }
     this.running = false;
     this.timer = null;
     this.status = 'not connected';

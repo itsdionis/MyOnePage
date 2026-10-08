@@ -1,39 +1,39 @@
-.one-pager-host.view-content {
+.myone-page-host.view-content {
   padding: 0;
   overflow: hidden;
 }
-.one-pager-frame {
+.myone-page-frame {
   width: 100%;
   height: 100%;
   border: 0;
   display: block;
   background: var(--background-primary);
 }
-.one-pager-shared {
+.myone-page-shared {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 10px 4px;
   border-bottom: 1px solid var(--background-modifier-border);
 }
-.one-pager-shared:last-child {
+.myone-page-shared:last-child {
   border-bottom: 0;
 }
-.one-pager-shared-info {
+.myone-page-shared-info {
   flex: 1;
   min-width: 0;
 }
-.one-pager-shared-title {
+.myone-page-shared-title {
   font-weight: 600;
 }
-.one-pager-shared-who {
+.myone-page-shared-who {
   color: var(--text-muted);
   font-size: var(--font-ui-small);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.one-pager-shared-open {
+.myone-page-shared-open {
   display: inline-block;
   margin-top: 3px;
   padding: 0 8px;
@@ -42,11 +42,11 @@
   color: var(--text-warning);
   border: 1px solid var(--text-warning);
 }
-.one-pager-shared-btns {
+.myone-page-shared-btns {
   display: flex;
   gap: 2px;
 }
-.one-pager-shared-site {
+.myone-page-shared-site {
   display: flex;
   gap: 14px;
   margin: -6px 0 8px;
