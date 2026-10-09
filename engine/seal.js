@@ -47,4 +47,4 @@
   }
 
   root.SEAL = { KEY, ENVELOPE, newKey, seal, open };
-})(globalThis);
+})(window);

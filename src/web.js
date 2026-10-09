@@ -170,7 +170,7 @@ export class WebSync {
     this.warned = new Set();
   }
   get server() {
-    return (this.plugin.settings.server || '').trim().replace(/\/+$/, '');
+    return (this.plugin.prefs.server || '').trim().replace(/\/+$/, '');
   }
   get token() {
     return this.app.loadLocalStorage(WEB_TOKEN) || '';
@@ -420,9 +420,9 @@ export class WebSettings extends WEB.PluginSettingTab {
       .addText((t) =>
         t
           .setPlaceholder('Exports')
-          .setValue(p.settings.htmlFolder || '')
+          .setValue(p.prefs.htmlFolder || '')
           .onChange(async (v) => {
-            p.settings.htmlFolder = v.trim().replace(/^\/+|\/+$/g, '');
+            p.prefs.htmlFolder = v.trim().replace(/^\/+|\/+$/g, '');
             await p.saveSettings();
           }),
       );
@@ -446,9 +446,9 @@ export class WebSettings extends WEB.PluginSettingTab {
       .addText((t) =>
         t
           .setPlaceholder('https://myone.page')
-          .setValue(p.settings.server || '')
+          .setValue(p.prefs.server || '')
           .onChange(async (v) => {
-            p.settings.server = v.trim();
+            p.prefs.server = v.trim();
             await p.saveSettings();
           }),
       );
@@ -474,8 +474,8 @@ export class WebSettings extends WEB.PluginSettingTab {
         'Seconds, while Obsidian is open. Changes in a shared note also sync a few seconds after you stop typing.',
       )
       .addText((t) =>
-        t.setValue(String(p.settings.every || 60)).onChange(async (v) => {
-          p.settings.every = Math.max(15, Number(v) || 60);
+        t.setValue(String(p.prefs.every || 60)).onChange(async (v) => {
+          p.prefs.every = Math.max(15, Number(v) || 60);
           await p.saveSettings();
           p.schedule();
         }),

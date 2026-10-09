@@ -148,7 +148,7 @@ class SharedPages extends Modal {
 
 export default class MyOnePagePlugin extends Plugin {
   async onload() {
-    this.settings = Object.assign({ server: '', every: 60, htmlFolder: '' }, await this.loadData());
+    this.prefs = Object.assign({ server: '', every: 60, htmlFolder: '' }, await this.loadData());
     this.web = new WebSync(this);
     this.addSettingTab(new WebSettings(this.app, this));
     this.app.workspace.onLayoutReady(() => { this.schedule(); this.web.soon(3000); });
@@ -228,7 +228,7 @@ export default class MyOnePagePlugin extends Plugin {
     this.app.workspace.onLayoutReady(sweep);
   }
 
-  async saveSettings() { await this.saveData(this.settings); }
+  async saveSettings() { await this.saveData(this.prefs); }
 
   shareState(file) {
     const v = this.app.metadataCache.getFileCache(file)?.frontmatter?.share;
@@ -250,7 +250,7 @@ export default class MyOnePagePlugin extends Plugin {
   }
   schedule() {
     if (this.every) window.clearInterval(this.every);
-    this.every = this.registerInterval(window.setInterval(() => this.web.run(), (this.settings.every || 60) * 1000));
+    this.every = this.registerInterval(window.setInterval(() => this.web.run(), (this.prefs.every || 60) * 1000));
   }
 
   sweep() {
@@ -273,7 +273,7 @@ export default class MyOnePagePlugin extends Plugin {
   // HTML button: <note>.html in the HTML export folder of the settings (created if missing), or next to the note
   // when none is set; replaced if it is there. Returns the status line the page shows.
   async saveHTML(file, html) {
-    const dir = normalizePath(this.settings.htmlFolder || file.parent?.path || '/');
+    const dir = normalizePath(this.prefs.htmlFolder || file.parent?.path || '/');
     if (dir !== '/' && !this.app.vault.getFolderByPath(dir)) await this.app.vault.createFolder(dir);
     const p = normalizePath(`${dir === '/' ? '' : dir + '/'}${file.basename}.html`), old = this.app.vault.getFileByPath(p);
     if (old) await this.app.vault.modify(old, html); else await this.app.vault.create(p, html);

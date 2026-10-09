@@ -1,6 +1,6 @@
 {
   "name": "myone-page",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "Obsidian plugin: turn a note into a one-page report that people can read, edit in place and share.",
   "license": "MIT",
