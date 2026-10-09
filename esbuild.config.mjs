@@ -1,4 +1,4 @@
-// Bundles src/main.js into main.js. An import ending in `?text` is the file's text (the engine runs from text inside
+// Bundles src/main.ts into main.js. An import ending in `?text` is the file's text (the engine runs from text inside
 // the page iframe). --watch rebuilds on change.
 import { readFile } from 'node:fs/promises';
 import esbuild from 'esbuild';
@@ -18,7 +18,7 @@ const text = {
 };
 
 const ctx = await esbuild.context({
-  entryPoints: ['src/main.js'],
+  entryPoints: ['src/main.ts'],
   outfile: 'main.js',
   bundle: true,
   format: 'cjs',

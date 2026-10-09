@@ -101,7 +101,7 @@ node check.mjs --fix path/to/note.md    # rewrite it canonically
 
 ```sh
 pnpm install
-pnpm build     # main.js: src/main.js bundled by esbuild, with the engine files (engine/) as text
+pnpm build     # main.js: src/main.ts bundled by esbuild, with the engine files (engine/) as text
 pnpm dev       # rebuild on change
 pnpm verify    # Prettier, ESLint (Obsidian's rules), the sample page, the build: what a release runs
 ```

@@ -10,9 +10,48 @@
 //   web text in "<note> (web version).md"; delete that file once the note says what you want, and the note is pushed.
 // `share: new` gets a fresh id and key and the link is copied. Removing `share:` takes the page offline.
 import * as WEB from 'obsidian';
+import type { App, TFile } from 'obsidian';
+import type MyOnePagePlugin from './main';
 import '../engine/seal.js'; // a classic script: sets window.SEAL
 
 const { SEAL } = window;
+
+// The frontmatter keys read here; Obsidian types every value as any.
+export interface Frontmatter {
+  share?: unknown;
+  editors?: unknown;
+  viewers?: unknown;
+  title?: unknown;
+  [key: string]: unknown;
+}
+export const frontmatter = (app: App, file: TFile): Frontmatter =>
+  app.metadataCache.getFileCache(file)?.frontmatter ?? {};
+interface PageState {
+  path: string;
+  base: string;
+  version: number;
+  key: string;
+  conflict?: string;
+}
+interface State {
+  server: string;
+  acct: string | null;
+  pages: Record<string, PageState>;
+}
+interface Page {
+  id: string;
+  key: string;
+  link: string;
+  fresh?: boolean;
+  upgraded?: boolean;
+}
+// A page in GET /api/owner/pages.
+interface Summary {
+  id: string;
+  version: number;
+  editors: string[];
+  viewers: string[];
+}
 
 const WEB_ID = /^[A-Za-z0-9]{22}$/;
 const WEB_LINK = /^(https?:\/\/[^/\s]+)\/p\/([A-Za-z0-9_-]{16})\/([A-Za-z0-9]{22})#k=([A-Za-z0-9_-]{43})$/;
@@ -33,12 +72,12 @@ function webId() {
 }
 
 // The note without its owner-only keys (pub), and those lines (own), kept as written.
-function webSplit(text) {
+function webSplit(text: string) {
   const L = text.replace(/\r\n?/g, '\n').split('\n'),
     end = L[0] === '---' ? L.indexOf('---', 1) : -1;
   if (end < 0) return { pub: L.join('\n'), own: [] };
-  const fm = [],
-    own = [];
+  const fm: string[] = [],
+    own: string[] = [];
   for (let i = 1; i < end; i++) {
     if (!WEB_KEYS.test(L[i])) {
       fm.push(L[i]);
@@ -49,11 +88,11 @@ function webSplit(text) {
   }
   return { pub: ['---', ...fm, ...L.slice(end)].join('\n'), own };
 }
-function webJoin(pub, own) {
+function webJoin(pub: string, own: string[]) {
   const L = pub.split('\n');
   return L[0] === '---' ? ['---', ...own, ...L.slice(1)].join('\n') : ['---', ...own, '---', ...L].join('\n');
 }
-export function webShare(text) {
+export function webShare(text: string): string | undefined {
   // the share: value in the frontmatter, or undefined
   const L = text.replace(/\r\n?/g, '\n').split('\n'),
     end = L[0] === '---' ? L.indexOf('---', 1) : -1;
@@ -65,35 +104,44 @@ export function webShare(text) {
 // A share: value -> {id, key, link, fresh?, upgraded?}, or null when it is not one.
 //   new|true|yes|"" -> a new page; a bare 22-character id (before encryption) -> same id, new key;
 //   a link -> its id and key, moved to this server and account if it names others.
-function webResolve(value, server, acct) {
-  const v = String(value ?? '').trim(),
+function webResolve(value: unknown, server: string, acct: string): Page | null {
+  const v = String((value as string) ?? '').trim(),
     m = WEB_LINK.exec(v);
-  const at = (id, key, extra) => ({ id, key, link: webLink(server, acct, id, key), ...extra });
+  const at = (id: string, key: string, extra?: Partial<Page>): Page => ({
+    id,
+    key,
+    link: webLink(server, acct, id, key),
+    ...extra,
+  });
   if (/^(new|true|yes|)$/i.test(v)) return at(webId(), SEAL.newKey(), { fresh: true });
   if (WEB_ID.test(v)) return at(v, SEAL.newKey(), { upgraded: true });
   return m ? at(m[3], m[4]) : null;
 }
-const webLink = (server, acct, id, key) => `${server}/p/${acct}/${id}#k=${key}`;
-export const webLive = (v) => v != null && WEB_LINK.test(String(v).trim());
-const webAcct = (token) => {
+const webLink = (server: string, acct: string, id: string, key: string) => `${server}/p/${acct}/${id}#k=${key}`;
+export const webLive = (v: unknown) => typeof v === 'string' && WEB_LINK.test(v.trim());
+const webAcct = (token: string) => {
   const m = /^([A-Za-z0-9_-]{16})\.[A-Za-z0-9_-]+$/.exec(token || '');
   return m ? m[1] : null;
 };
 // The web text, decrypted, without owner-only keys: an editor must not set share/editors/viewers through the web.
-async function webOpen(key, address, envelope) {
+async function webOpen(key: string, address: string, envelope: string) {
   return webSplit(await SEAL.open(key, address, envelope)).pub;
 }
 
-export const webList = (v) =>
-  (Array.isArray(v) ? v : v == null || v === '' ? [] : String(v).split(','))
-    .map((e) => String(e).trim().toLowerCase())
+export const webList = (v: unknown): string[] =>
+  (Array.isArray(v) ? (v as unknown[]) : v == null || v === '' ? [] : String(v as string).split(','))
+    .map((e) =>
+      String(e as string)
+        .trim()
+        .toLowerCase(),
+    )
     .filter(Boolean);
 
 // Three-way merge by lines. For each line of base: its match in a and in b (or -1), from a longest common subsequence.
-function webMatch(base, x) {
+function webMatch(base: string[], x: string[]) {
   const n = base.length,
     m = x.length,
-    map = new Array(n).fill(-1);
+    map = new Array<number>(n).fill(-1);
   let p = 0;
   while (p < n && p < m && base[p] === x[p]) {
     map[p] = p;
@@ -122,7 +170,7 @@ function webMatch(base, x) {
   }
   return map;
 }
-function webMerge(baseText, aText, bText) {
+function webMerge(baseText: string, aText: string, bText: string): { clean: true; text: string } | { clean: false } {
   if (aText === bText || bText === baseText) return { clean: true, text: aText };
   if (aText === baseText) return { clean: true, text: bText };
   const base = baseText.split('\n'),
@@ -130,8 +178,8 @@ function webMerge(baseText, aText, bText) {
     b = bText.split('\n');
   const ma = webMatch(base, a),
     mb = webMatch(base, b),
-    out = [];
-  const eq = (x, y) => x.length === y.length && x.every((l, i) => l === y[i]);
+    out: string[] = [];
+  const eq = (x: string[], y: string[]) => x.length === y.length && x.every((l, i) => l === y[i]);
   let i = 0,
     ja = 0,
     jb = 0;
@@ -156,26 +204,34 @@ function webMerge(baseText, aText, bText) {
 }
 
 export class WebSync {
-  constructor(plugin) {
+  plugin: MyOnePagePlugin;
+  app: App;
+  running: boolean;
+  timer: number | undefined;
+  status: string;
+  warned: Set<string>;
+  fresh: string | null = null; // the id of a page just given a new link: its link is copied once it is online
+
+  constructor(plugin: MyOnePagePlugin) {
     this.plugin = plugin;
     this.app = plugin.app;
     for (const [key, old] of Object.entries(WEB_OLD)) {
-      const v = this.app.loadLocalStorage(old);
+      const v = this.app.loadLocalStorage(old) as string | null;
       if (v && !this.app.loadLocalStorage(key)) this.app.saveLocalStorage(key, v);
       if (v) this.app.saveLocalStorage(old, null);
     }
     this.running = false;
-    this.timer = null;
+    this.timer = undefined;
     this.status = 'not connected';
     this.warned = new Set();
   }
   get server() {
     return (this.plugin.prefs.server || '').trim().replace(/\/+$/, '');
   }
-  get token() {
-    return this.app.loadLocalStorage(WEB_TOKEN) || '';
+  get token(): string {
+    return (this.app.loadLocalStorage(WEB_TOKEN) as string | null) || '';
   }
-  set token(v) {
+  set token(v: string) {
     this.app.saveLocalStorage(WEB_TOKEN, v || null);
   }
   get ready() {
@@ -185,10 +241,10 @@ export class WebSync {
     return webAcct(this.token);
   }
 
-  load() {
-    let s = null;
+  load(): State {
+    let s: State | null = null;
     try {
-      s = JSON.parse(this.app.loadLocalStorage(WEB_STATE) || 'null');
+      s = JSON.parse((this.app.loadLocalStorage(WEB_STATE) as string | null) || 'null') as State | null;
     } catch {
       /* none yet */
     }
@@ -196,11 +252,11 @@ export class WebSync {
       ? s
       : { server: this.server, acct: this.acct, pages: {} };
   }
-  store(s) {
+  store(s: State) {
     this.app.saveLocalStorage(WEB_STATE, JSON.stringify(s));
   }
 
-  async call(method, path, body) {
+  async call(method: string, path: string, body?: object): Promise<{ status: number; data: unknown }> {
     const r = await WEB.requestUrl({
       url: this.server + path,
       method,
@@ -208,9 +264,9 @@ export class WebSync {
       headers: { Authorization: `Bearer ${this.token}` },
       ...(body ? { contentType: 'application/json', body: JSON.stringify(body) } : {}),
     });
-    let data = null;
+    let data: unknown = null;
     try {
-      data = r.json;
+      data = r.json as unknown;
     } catch {
       /* not JSON */
     }
@@ -219,7 +275,7 @@ export class WebSync {
 
   soon(ms = 4000) {
     window.clearTimeout(this.timer);
-    this.timer = window.setTimeout(() => this.run(), ms);
+    this.timer = window.setTimeout(() => void this.run(), ms);
   }
 
   // force: take more than two pages offline in one round (normally a sign the vault is not fully loaded).
@@ -234,29 +290,32 @@ export class WebSync {
       await this.round(force);
       this.status = `synced ${new Date().toLocaleTimeString()}`;
     } catch (e) {
-      this.status = `error: ${e.message || e}`;
-      this.plugin.log(`sync: ${e.stack || e}`);
+      const err = e instanceof Error ? e : new Error(String(e));
+      this.status = `error: ${err.message}`;
+      this.plugin.log(`sync: ${err.stack || err.message}`);
     } finally {
       this.running = false;
     }
   }
 
-  async round(force) {
+  async round(force: boolean) {
     const state = this.load(),
-      vault = this.app.vault;
+      vault = this.app.vault,
+      acct = this.acct;
+    if (!acct) return;
     const list = await this.call('GET', '/api/owner/pages');
     if (list.status === 401) throw new Error('the token was refused: make a new one on the settings page');
     if (list.status !== 200) throw new Error(`server answered ${list.status}`);
-    const remote = new Map(list.data.map((p) => [p.id, p]));
+    const remote = new Map((list.data as Summary[]).map((p) => [p.id, p]));
 
-    const seen = new Map(),
-      upgraded = []; // id -> file; notes whose link changed
+    const seen = new Map<string, TFile>(),
+      upgraded: string[] = []; // id -> file; notes whose link changed
     for (const file of vault.getMarkdownFiles()) {
-      if (this.app.metadataCache.getFileCache(file)?.frontmatter?.share == null) continue;
+      if (frontmatter(this.app, file).share == null) continue;
       let text = await vault.read(file),
         share = webShare(text);
       if (share == null) continue;
-      const page = webResolve(share, this.server, this.acct);
+      const page = webResolve(share, this.server, acct);
       if (!page) {
         new WEB.Notice(`${file.path}: share: must be "new" or a myone.page link`);
         continue;
@@ -269,11 +328,13 @@ export class WebSync {
         else if (page.upgraded) upgraded.push(file.basename);
       }
       if (seen.has(page.id)) {
-        new WEB.Notice(`${file.path} has the same share link as ${seen.get(page.id).path}: set share: new on the copy`);
+        new WEB.Notice(
+          `${file.path} has the same share link as ${seen.get(page.id)?.path ?? ''}: set share: new on the copy`,
+        );
         continue;
       }
       seen.set(page.id, file);
-      await this.one(state, page, file, text, remote.get(page.id));
+      await this.one(state, acct, page, file, text, remote.get(page.id));
     }
     if (upgraded.length)
       new WEB.Notice(
@@ -296,10 +357,10 @@ export class WebSync {
     this.store(state);
   }
 
-  async one(state, page, file, text, summary) {
+  async one(state: State, acct: string, page: Page, file: TFile, text: string, summary: Summary | undefined) {
     const { id, key, link } = page,
-      address = `${this.acct}/${id}`;
-    const fm = this.app.metadataCache.getFileCache(file)?.frontmatter || {};
+      address = `${acct}/${id}`;
+    const fm = frontmatter(this.app, file);
     const acl = { editors: webList(fm.editors), viewers: webList(fm.viewers) };
     const { pub, own } = webSplit(text);
     let st = state.pages[id];
@@ -307,16 +368,16 @@ export class WebSync {
       if (this.app.vault.getAbstractFileByPath(st.conflict)) return; // waiting for you to settle it
       delete st.conflict;
     }
-    const put = async (base, body) => {
+    const put = async (base: number, body: string) => {
       const r = await this.call('PUT', `/api/owner/p/${id}`, {
         base,
         text: await SEAL.seal(key, address, body),
         ...acl,
       });
       if (r.status !== 200) return null; // 409: the next round sees the web change
-      return r.data.version;
+      return (r.data as { version: number }).version;
     };
-    const keep = (base, version, extra) => {
+    const keep = (base: string, version: number, extra?: Partial<PageState>) => {
       state.pages[id] = { path: file.path, base, version, key, ...extra };
     };
 
@@ -340,21 +401,22 @@ export class WebSync {
     const aclChanged = JSON.stringify(acl) !== JSON.stringify({ editors: summary.editors, viewers: summary.viewers });
     const local = !st || pub !== st.base || st.key !== key,
       web = !st || summary.version !== st.version;
-    if (!local && !web) {
+    if (st && !local && !web) {
       if (aclChanged) await this.call('PUT', `/api/owner/p/${id}`, { base: summary.version, text: null, ...acl });
       st.path = file.path;
       return;
     }
-    if (local && !web) {
+    if (st && local && !web) {
       const v = await put(st.version, pub);
       if (v != null) keep(pub, v);
       return;
     }
     const r = await this.call('GET', `/api/owner/p/${id}`);
     if (r.status !== 200) return;
+    const got = r.data as { version: number; text: string };
     let w;
     try {
-      w = { version: r.data.version, text: await webOpen(key, address, r.data.text) };
+      w = { version: got.version, text: await webOpen(key, address, got.text) };
     } catch {
       if (!this.warned.has(id))
         new WEB.Notice(
@@ -382,7 +444,7 @@ export class WebSync {
     }
     const copy =
       (file.parent && file.parent.path !== '/' ? file.parent.path + '/' : '') + `${file.basename} (web version).md`;
-    const old = this.app.vault.getAbstractFileByPath(copy);
+    const old = this.app.vault.getFileByPath(copy);
     if (old) await this.app.vault.modify(old, w.text);
     else await this.app.vault.create(copy, w.text);
     keep(w.text, w.version, { conflict: copy });
@@ -394,7 +456,7 @@ export class WebSync {
   }
 
   // Write a note only if it still holds what we read: a change typed meanwhile wins, and waits for the next round.
-  async replace(file, was, now) {
+  async replace(file: TFile, was: string, now: string) {
     let ok = false;
     await this.app.vault.process(file, (cur) => {
       ok = cur === was;
@@ -405,7 +467,8 @@ export class WebSync {
 }
 
 export class WebSettings extends WEB.PluginSettingTab {
-  constructor(app, plugin) {
+  plugin: MyOnePagePlugin;
+  constructor(app: App, plugin: MyOnePagePlugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
