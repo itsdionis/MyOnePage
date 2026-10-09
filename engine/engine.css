@@ -408,7 +408,7 @@ body.edit .grow > .idel {
   color: var(--accent);
 }
 [data-p] code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.9em;
 }
 [data-p] b,
@@ -722,7 +722,7 @@ a.fstep {
   flex-wrap: wrap;
 }
 .cmd code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13.5px;
   background: var(--code-bg);
   border: 1px solid var(--line);
