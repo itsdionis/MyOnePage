@@ -629,6 +629,10 @@ export class WebSettings extends WEB.PluginSettingTab {
       sync = p.web;
     el.empty();
     new WEB.Setting(el)
+      .setName('Start from a template')
+      .setDesc('A finished sample page (an investor update, a proposal, a brief…) to overwrite with your own text.')
+      .addButton((b) => b.setButtonText('Choose a template').onClick(() => p.pickTemplate()));
+    new WEB.Setting(el)
       .setName('HTML export folder')
       .setDesc('Where the HTML button saves <note>.html, relative to the vault. Empty: next to the note.')
       .addText((t) =>

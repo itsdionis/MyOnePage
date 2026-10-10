@@ -11,7 +11,9 @@ note. It stays a plain Markdown note you can still open, search and link.
 
 **See finished pages first** (each one is a single note, open in a browser, no sign-in):
 [investor update](https://myone.page/examples/investor-update) ·
+[board pre-read](https://myone.page/examples/board-pre-read) ·
 [client proposal](https://myone.page/examples/client-proposal) ·
+[client results report](https://myone.page/examples/client-report) ·
 [strategy memo](https://myone.page/examples/strategy-memo) ·
 [product brief](https://myone.page/examples/product-brief) ·
 [Obsidian plugin market analysis](https://myone.page/examples/obsidian-plugin-market)
@@ -21,6 +23,26 @@ no time limit. **Sharing is optional:** publish a page to [myone.page](https://m
 the browser, with their edits back in your note within 60 seconds, end-to-end encrypted. Your first 3 shared pages
 are free (the people you share with sign in); a paid plan adds unlimited pages and links open to anyone. Readers
 don't need Obsidian and pay nothing. See [Share on the web](#share-on-the-web-optional).
+
+## Start from a template
+
+Run **New page from template** (or the ribbon's page icon, **New MyOnePage…** on a folder in the file explorer, or
+the button in the plugin's settings) and pick one. You get a new note with the outline of that kind of page, open at
+once: the parts, numbers, cards and timeline it needs, each field saying what goes there (`[Company]`, `\$0`, "One
+line, with a number"). Click any text and write your own.
+
+| Template              | For                                     | Follows                                                                |
+| --------------------- | --------------------------------------- | ---------------------------------------------------------------------- |
+| Investor update       | investors and advisors, monthly         | YC's format: numbers, highlights, lowlights, asks, goals               |
+| Board pre-read        | the board, two days before each meeting | Sequoia's board deck: big picture, numbers against plan, one deep dive |
+| Client proposal       | a client, before the contract           | the options as cards, the timeline, the price                          |
+| Client results report | a client, each quarter                  | a quarterly business review: results against goals, the next 90 days   |
+| Product brief         | the team building it                    | a Shape Up pitch: problem, appetite, solution, rabbit holes, no-gos    |
+| Strategy memo         | the team and the board, yearly          | Rumelt's kernel: diagnosis, guiding policy, coherent actions           |
+| Blank                 | anything                                | a title, a hero line and one part                                      |
+
+To see one finished first, open its example on myone.page (the links above). **Use this template** at the top of an
+example opens Obsidian with a new note from the matching template, if the plugin is installed.
 
 ## Use
 
@@ -112,7 +134,7 @@ and, when a shared note was changed on both sides, to `<note> (web version).md`.
 
 `skills/myone-page/SKILL.md` is the whole page format as an agent skill. Copy the `myone-page` folder into your
 vault's `.claude/skills/` and Claude Code can write and fix one-pagers there. `examples/one-pager.md` uses every
-block type.
+block type; `templates/` has the outlines the plugin starts new pages from.
 
 `check.mjs` checks a page and rewrites it in the canonical form the page saves (Node 18 or later, no install):
 

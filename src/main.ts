@@ -1,13 +1,15 @@
 // Obsidian plugin: opens a note as a MyOnePage. The engine (md.js, engine.js, engine.css) runs unchanged
 // inside a sandboxed iframe; a shim stands in for the server: its fetch GET reads the note, PUT writes it.
 // esbuild bundles it into main.js, with the engine files as text (`?text`, see esbuild.config.mjs).
-import { Plugin, TextFileView, MarkdownView, Notice, Modal, TFile, normalizePath, setIcon } from 'obsidian';
+import { Plugin, TextFileView, MarkdownView, Notice, Modal, TFile, TFolder, normalizePath, setIcon } from 'obsidian';
 import type { WorkspaceLeaf, View } from 'obsidian';
 import css from '../engine/engine.css?text';
 import md from '../engine/md.js?text';
 import js from '../engine/engine.js?text';
 import { WebSync, WebSettings, frontmatter, webLive, webList, webShare } from './web';
 import type { Frontmatter } from './web';
+import { TEMPLATES, TemplatePicker, newFromTemplate } from './templates';
+import type { Template } from './templates';
 
 const ENGINE = { css, md, js };
 
@@ -51,6 +53,7 @@ export interface Prefs {
   token: string; // the sharing server's token (see WebSync): in data.json, so it syncs with the vault
   every: number;
   htmlFolder: string;
+  welcomed: boolean; // the first-run notice was shown
 }
 type Mode = 'source' | 'preview';
 
@@ -71,6 +74,7 @@ class MyOnePageView extends TextFileView {
   frame: HTMLIFrameElement | null = null;
   shown: string | null = null;
   shareAction: HTMLElement | null = null;
+  sample: HTMLElement | null = null;
   constructor(leaf: WorkspaceLeaf, plugin: MyOnePagePlugin) {
     super(leaf);
     this.plugin = plugin;
@@ -126,12 +130,33 @@ class MyOnePageView extends TextFileView {
     this.data = '';
   }
 
+  // A page made from a template (`template:` in its frontmatter) says to write over the placeholders, until
+  // dismissed: the page alone doesn't show that it can be edited.
+  refreshSample() {
+    const el = this.sample,
+      file = this.file;
+    if (!el) return;
+    el.empty();
+    const on = !!file && frontmatter(this.app, file).template != null;
+    el.toggle(on);
+    if (!file || !on) return;
+    el.createSpan({ text: 'Click any text to write your own. Every field says what goes there.' });
+    const b = el.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Dismiss' } });
+    setIcon(b, 'x');
+    b.onclick = () =>
+      void this.app.vault.process(file, (text) =>
+        text.replace(/^---\n[\s\S]*?\n---\n/, (fm) => fm.replace(/^template:.*\n/m, '')),
+      );
+  }
+
   // Rebuild the iframe unless it already shows this text (our own save comes back as a modify event).
   show(force?: boolean) {
     if (!force && this.frame && this.shown === this.data) return;
     this.shown = this.data;
     this.contentEl.empty();
     this.contentEl.addClass('myone-page-host');
+    this.sample = this.contentEl.createDiv('myone-page-sample');
+    this.refreshSample();
     this.frame = this.contentEl.createEl('iframe', { cls: 'myone-page-frame' });
     this.frame.setAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox allow-downloads');
     this.frame.srcdoc = page();
@@ -237,7 +262,7 @@ class SharedPages extends Modal {
 }
 
 export default class MyOnePagePlugin extends Plugin {
-  prefs: Prefs = { server: '', token: '', every: 60, htmlFolder: '' };
+  prefs: Prefs = { server: '', token: '', every: 60, htmlFolder: '', welcomed: false };
   web!: WebSync;
   every = 0;
   markdownLeaves = new WeakMap<WorkspaceLeaf, string>(); // leaf -> path the user chose to read as Markdown
@@ -250,6 +275,16 @@ export default class MyOnePagePlugin extends Plugin {
     this.app.workspace.onLayoutReady(() => {
       this.schedule();
       this.web.soon(3000);
+      if (!this.prefs.welcomed) void this.welcome();
+    });
+
+    this.addCommand({ id: 'template', name: 'New page from template', callback: () => this.pickTemplate() });
+    this.addRibbonIcon('layout-template', 'New MyOnePage from a template', () => this.pickTemplate());
+    // obsidian://myone-page?template=<slug>: the "Use this template" button on myone.page/examples/<slug>
+    this.registerObsidianProtocolHandler('myone-page', (params) => {
+      const t = TEMPLATES.find((x) => x.slug === params.template);
+      if (t) void this.fromTemplate(t);
+      else new Notice(`MyOnePage: there is no template "${params.template ?? ''}".`);
     });
     // a shared note changed (seen once Obsidian has re-read its frontmatter): sync once typing stops
     this.registerEvent(
@@ -272,7 +307,10 @@ export default class MyOnePagePlugin extends Plugin {
     this.registerEvent(
       this.app.metadataCache.on('changed', (file) => {
         for (const leaf of this.app.workspace.getLeavesOfType(VIEW))
-          if (leaf.view instanceof MyOnePageView && leaf.view.file === file) leaf.view.refreshShare();
+          if (leaf.view instanceof MyOnePageView && leaf.view.file === file) {
+            leaf.view.refreshShare();
+            leaf.view.refreshSample();
+          }
       }),
     );
     this.addCommand({
@@ -347,6 +385,13 @@ export default class MyOnePagePlugin extends Plugin {
 
     this.registerEvent(
       this.app.workspace.on('file-menu', (menu, file, source, leaf) => {
+        if (file instanceof TFolder)
+          menu.addItem((i) =>
+            i
+              .setTitle('New MyOnePage…')
+              .setIcon('layout-template')
+              .onClick(() => this.pickTemplate(file)),
+          );
         if (!(file instanceof TFile) || file.extension !== 'md') return;
         if (leaf && leaf.view.getViewType() === VIEW)
           menu.addItem((i) =>
@@ -381,6 +426,36 @@ export default class MyOnePagePlugin extends Plugin {
     this.registerEvent(this.app.workspace.on('layout-change', sweep));
     this.registerEvent(this.app.metadataCache.on('changed', sweep)); // the flag was just added
     this.app.workspace.onLayoutReady(sweep);
+  }
+
+  // The template picker; the new page goes in the folder, else next to the open note, else where Obsidian puts new
+  // notes (its "Default location for new notes").
+  pickTemplate(folder?: TFolder) {
+    new TemplatePicker(this.app, (t) => void this.fromTemplate(t, folder)).open();
+  }
+  async fromTemplate(t: Template, folder?: TFolder) {
+    const dir = folder ?? this.app.workspace.getActiveFile()?.parent ?? this.app.fileManager.getNewFileParent('');
+    try {
+      const file = await newFromTemplate(this.app, t, dir);
+      await this.app.workspace.getLeaf('tab').setViewState({ type: VIEW, state: { file: file.path }, active: true });
+    } catch (err) {
+      console.error(err);
+      new Notice(`MyOnePage: could not create the page: ${String(err)}`);
+    }
+  }
+
+  // Once, on the first start: point at the templates, the quickest way to see a page.
+  async welcome() {
+    const f = createFragment((d) => {
+      d.appendText('MyOnePage is ready. ');
+      d.createEl('a', { text: 'Try it: start from a template', href: '#' }).onclick = (e) => {
+        e.preventDefault();
+        this.pickTemplate();
+      };
+    });
+    new Notice(f, 20000);
+    this.prefs.welcomed = true;
+    await this.saveSettings();
   }
 
   async saveSettings() {

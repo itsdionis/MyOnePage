@@ -1,6 +1,6 @@
 ---
 title: Fernhill · September update
-updated: 2026-10-08
+updated: 2026-10-10
 lang: en
 myone.page: true
 ---
@@ -8,7 +8,7 @@ myone.page: true
 # Fernhill investor update, September 2026.
 # Runway ==18 months==, MRR up 12%.
 
-Monthly update to investors and advisors. Fernhill is bookkeeping software for small agencies. Numbers are from September 30.
+Monthly update to investors and advisors: the numbers, highlights and lowlights, what we need, and last month's goals scored. Fernhill is bookkeeping software for small agencies. Numbers are from September 30.
 
 ## 01 · The numbers
 month over month
@@ -39,10 +39,17 @@ month over month
 
 ## 02 · What happened
 
+### Highlights
+
 > [!cards]
-> - **Highlight: the accountant channel works** 14 partner firms now refer clients; they brought 41% of new revenue.
-> - **Highlight: annual plans** 31% of new customers chose yearly billing after we added a two-month discount.
-> - **Lowlight: support load** Tickets per customer rose 30%. Bank sync errors cause most of them.
+> - **The accountant channel works** 14 partner firms now refer clients; they brought 41% of new revenue.
+> - **Annual plans** 31% of new customers chose yearly billing after we added a two-month discount.
+
+### Lowlights
+
+> [!cards]
+> - **Support load** Tickets per customer rose 30%. Bank sync errors cause most of them.
+> - **No head of support yet** Three finalists, no offer. We are two months behind the plan for this hire.
 
 > [!lineage] Why burn went up
 > Two engineers joined in August to fix bank sync. We expect tickets to drop by November and burn to stay flat after.
@@ -53,5 +60,23 @@ how you can help this month
 1. **Intros to accounting firms.** Firms with 10–50 staff that serve agencies or studios.
 2. **A head of support.** Someone who has scaled a support team from 2 to 10.
 3. **Bank data providers.** Anyone who has negotiated pricing with Plaid or TrueLayer.
+
+## 04 · Goals
+September scored, October set
+
+### September, scored
+
+%% table cols="1.4fr 1fr 110px" pillCol=2 %%
+| September goal | Result | Hit |
+| --- | --- | --- |
+| MRR \$82K | \$84.2K | yes |
+| Bank sync errors under 2% of syncs | 3.1% | no |
+| Head of support offer out | three finalists, no offer | no |
+
+### October goals
+
+1. **MRR \$92K.** The partner firms signed in September start referring in October.
+2. **Bank sync errors under 2%.** The new sync service goes live on October 14.
+3. **Head of support hired.** An offer out by October 20.
 
 **Next update:** first week of November, with Q3 closed books.

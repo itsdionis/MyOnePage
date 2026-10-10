@@ -12,7 +12,10 @@ one click away). Every edit on the page rewrites the file in the canonical form 
 **Where it goes.** Anywhere in the vault, filed like any other note. Follow the vault's own conventions
 (its `CLAUDE.md`, if it has one) for folder and file name.
 
-**Example to copy from:** `examples/one-pager.md` in the plugin repository uses every block type.
+**Examples to copy from:** `examples/one-pager.md` in the plugin repository uses every block type. The other
+files in `examples/` are finished pages of common kinds (investor update, board pre-read, client proposal, client
+results report, product brief, strategy memo), and `templates/` has the same pages as outlines: start from the closest
+one when the owner asks for that kind of page.
 
 ## Workflow
 

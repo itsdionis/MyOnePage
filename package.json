@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "node check.mjs examples/one-pager.md",
+    "check": "node check.mjs examples/*.md templates/*.md",
     "verify": "pnpm format:check && pnpm lint && pnpm check && pnpm build"
   },
   "devDependencies": {

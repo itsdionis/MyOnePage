@@ -2,6 +2,11 @@
 
 ## 1.0.4 (unreleased)
 
+- Start from a template: **New page from template** (command, ribbon, **New MyOnePage…** on a folder, and the
+  settings) makes a new note from an outline and opens it: investor update, board pre-read, client proposal, client
+  results report, product brief, strategy memo, or blank. Every field says what goes there; a line above the page
+  says to click and write, until you dismiss it. **Use this template** on the example pages of myone.page does the same from the
+  browser. The first start points to the templates.
 - Share with no setup: the first share makes an account on myone.page with a random token, no sign-up and no token
   to copy. The token now lives in the plugin's settings (moved from this device's local storage), so devices that
   sync the vault share it. The globe button opens a page signed in as its owner (a one-time link).

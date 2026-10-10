@@ -52,3 +52,27 @@
   margin: -6px 0 8px;
   font-size: var(--font-ui-small);
 }
+.myone-page-host.view-content {
+  display: flex;
+  flex-direction: column;
+}
+.myone-page-host .myone-page-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+}
+.myone-page-sample {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 4px 12px;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.myone-page-template small {
+  display: block;
+  color: var(--text-muted);
+}
