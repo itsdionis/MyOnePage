@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.4 (unreleased)
+## 1.0.4
 
 - Start from a template: **New page from template** (command, ribbon, **New MyOnePage…** on a folder, and the
   settings) makes a new note from an outline and opens it: investor update, board pre-read, client proposal, client
