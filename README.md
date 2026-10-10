@@ -79,7 +79,7 @@ click share. Everything above (pages, editing, HTML export, the Claude skill) is
   plugin makes a random token and registers it as a new account, with no sign-up. You sign in (Google or an email
   link) only when you want to: the globe button on a shared page opens it signed in as its owner. 3 shared pages
   are free, shared with people who sign in. A paid plan adds unlimited pages and pages open to anyone with the link
-  (founding price $1.99/month, normally $3.99; $19/year; $49 lifetime; 30-day refund). The people you share with
+  (founding price $1.99/month for the first 100 members, then $3.99; $19/year; $49 lifetime; 30-day refund). The people you share with
   sign in with Google or any email address, or not at all for a page open to anyone. The server is a separate service and is
   not part of this repository.
 - **Network use.** From your first share (or once you enter a token), the plugin talks to the sharing server and
