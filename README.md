@@ -1,10 +1,24 @@
 # MyOnePage
 
-Turn a note into a one-page report that people can read, edit in place and share.
+Stop rewriting your notes for your team. Add `myone.page: true` to a note and it opens as a styled one-page report:
+big numbers, cards, funnels, tables, a Gantt timeline. Click any text to edit it, and the edit is saved back to the
+note. It stays a plain Markdown note you can still open, search and link.
 
-A MyOnePage is an ordinary Markdown note. MyOnePage shows it as a styled page: a hero line, numbered parts, cards,
-big numbers, funnels, tables, timelines. You edit the text right on the page, and every edit is saved back to the
-note, so it stays a plain note you can still open, search and link as usual.
+<!-- GIF (10–15s): plain note -> page -> click-edit -> share link -> the web edit lands back in the note.
+     Copy ../docs/myonepage-demo.gif (private repo) to assets/demo.gif here, and replace this comment with:
+     ![MyOnePage demo](assets/demo.gif) -->
+
+**See finished pages first** (each one is a single note, open in a browser, no sign-in):
+[investor update](https://myone.page/examples/investor-update) ·
+[client proposal](https://myone.page/examples/client-proposal) ·
+[strategy memo](https://myone.page/examples/strategy-memo) ·
+[product brief](https://myone.page/examples/product-brief) ·
+[Obsidian plugin market analysis](https://myone.page/examples/obsidian-plugin-market)
+
+**The plugin is free.** Pages, editing on the page, HTML export and the Claude skill work without an account, with
+no time limit. **Sharing is optional and paid:** publish a page to [myone.page](https://myone.page) and your team
+edits it in the browser, with their edits back in your note within 60 seconds, end-to-end encrypted. Readers don't
+need Obsidian and pay nothing. See [Share on the web](#share-on-the-web-optional).
 
 ## Use
 
@@ -62,8 +76,9 @@ You can publish a page so that other people can read or edit it in a browser. Th
 Everything above (pages, editing, HTML export, the Claude skill) is free and works without an account.
 
 - **Payment is required to publish.** Sharing needs an account on a sharing server, such as
-  [myone.page](https://myone.page) (sign-in with Google), where publishing is a paid plan. The people you share
-  with need only a Google account, or nothing for a page open to anyone. The server is a separate service and is
+  [myone.page](https://myone.page) (sign-in with Google or an email link), where publishing is a paid plan
+  (founding price $1.99/month, normally $3.99; $19/year; $49 lifetime; 30-day refund). The people you share with
+  sign in with Google or any email address, or not at all for a page open to anyone. The server is a separate service and is
   not part of this repository.
 - **Network use.** Once you enter a server and a token in the plugin settings, the plugin talks to that server and
   nothing else. It sends only notes that have `share:` in their frontmatter, and syncs them both ways (every 60
