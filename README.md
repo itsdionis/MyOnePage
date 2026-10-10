@@ -4,7 +4,10 @@ Stop rewriting your notes for your team. Add `myone.page: true` to a note and it
 big numbers, cards, funnels, tables, a Gantt timeline. Click any text to edit it, and the edit is saved back to the
 note. It stays a plain Markdown note you can still open, search and link.
 
-![MyOnePage: a Markdown note becomes a page you edit in place and share as a link](https://raw.githubusercontent.com/itsdionis/MyOnePage/main/assets/demo.gif)
+<picture>
+  <source media="(max-width: 600px)" srcset="https://raw.githubusercontent.com/itsdionis/MyOnePage/main/assets/demo-mobile.gif">
+  <img src="https://raw.githubusercontent.com/itsdionis/MyOnePage/main/assets/demo.gif" width="960" alt="MyOnePage: a Markdown note becomes a page you edit in place and share as a link">
+</picture>
 
 **See finished pages first** (each one is a single note, open in a browser, no sign-in):
 [investor update](https://myone.page/examples/investor-update) ·
