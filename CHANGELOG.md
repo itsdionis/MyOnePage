@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.5 (unreleased)
+## 1.0.5
 
 - Releases carry only the plugin's files (`main.js`, `manifest.json`, `styles.css`). The skill for the Claude app is
   at myone.page/ai.
