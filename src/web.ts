@@ -210,6 +210,7 @@ export class WebSync {
   timer: number | undefined;
   status: string;
   warned: Set<string>;
+  told = new Set<string>(); // server refusals already shown: "<path>\n<message>"
   fresh: string | null = null; // the id of a page just given a new link: its link is copied once it is online
 
   constructor(plugin: MyOnePagePlugin) {
@@ -374,9 +375,14 @@ export class WebSync {
         text: await SEAL.seal(key, address, body),
         ...acl,
       });
-      if (r.status !== 200) return null; // 409: the next round sees the web change
+      if (r.status !== 200) {
+        this.refused(file, r);
+        return null; // 409: the next round sees the web change
+      }
       return (r.data as { version: number }).version;
     };
+    const putAcl = async (base: number) =>
+      this.refused(file, await this.call('PUT', `/api/owner/p/${id}`, { base, text: null, ...acl }));
     const keep = (base: string, version: number, extra?: Partial<PageState>) => {
       state.pages[id] = { path: file.path, base, version, key, ...extra };
     };
@@ -402,7 +408,7 @@ export class WebSync {
     const local = !st || pub !== st.base || st.key !== key,
       web = !st || summary.version !== st.version;
     if (st && !local && !web) {
-      if (aclChanged) await this.call('PUT', `/api/owner/p/${id}`, { base: summary.version, text: null, ...acl });
+      if (aclChanged) await putAcl(summary.version);
       st.path = file.path;
       return;
     }
@@ -431,7 +437,7 @@ export class WebSync {
       // only the web changed (or both the same way)
       if (pub !== w.text && !(await this.replace(file, text, webJoin(w.text, own)))) return;
       keep(w.text, w.version);
-      if (aclChanged) await this.call('PUT', `/api/owner/p/${id}`, { base: w.version, text: null, ...acl });
+      if (aclChanged) await putAcl(w.version);
       return;
     }
     const m = webMerge(st ? st.base : '', pub, w.text);
@@ -453,6 +459,16 @@ export class WebSync {
         'bring what you want into the note, then delete that file.',
       0,
     );
+  }
+
+  // A refusal the server explains (402: the free plan's limits) is shown once per note and message, not every round.
+  refused(file: TFile, r: { status: number; data: unknown }) {
+    const msg = (r.data as { error?: unknown } | null)?.error;
+    if (r.status !== 402 || typeof msg !== 'string') return;
+    const k = `${file.path}\n${msg}`;
+    if (this.told.has(k)) return;
+    this.told.add(k);
+    new WEB.Notice(`MyOnePage: ${file.basename} was not published as it is. ${msg}`, 0);
   }
 
   // Write a note only if it still holds what we read: a change typed meanwhile wins, and waits for the next round.
@@ -496,7 +512,8 @@ export class WebSettings extends WEB.PluginSettingTab {
         'emails, @domains, or anyone (whoever has the link). share: then holds the link, which is copied when the page is published. ' +
         'The note is encrypted on this device and the key is the part of the link after #, so the server cannot read it: ' +
         'whoever has the full link and is allowed in can. To cut off an anyone page, set share: new (a new link). ' +
-        'This needs an account on a sharing server such as myone.page; notes go only to the server set here, and only notes with share:.',
+        'This needs an account on a sharing server such as myone.page (free for 3 pages shared with people who sign in; ' +
+        'a paid plan for more pages and for anyone links). Notes go only to the server set here, and only notes with share:.',
     });
     new WEB.Setting(el)
       .setName('Server')
@@ -522,7 +539,7 @@ export class WebSettings extends WEB.PluginSettingTab {
           f.appendText(
             "From the server's settings page, signed in with an account allowed to publish. Kept on this device only. ",
           );
-          if (sync.server) f.createEl('a', { text: 'Open settings page', href: `${sync.server}/settings` });
+          f.createEl('a', { text: 'Open settings page', href: `${sync.server || 'https://myone.page'}/settings` });
         }),
       )
       .addText((t) => {
