@@ -715,13 +715,13 @@ export class WebSettings extends WEB.PluginSettingTab {
           p.schedule();
         }),
       );
-    new WEB.Setting(el)
+    const status = new WEB.Setting(el)
       .setName('Status')
       .setDesc(sync.status)
       .addButton((b) =>
         b.setButtonText('Sync now').onClick(async () => {
           await sync.run(true);
-          this.display();
+          status.setDesc(sync.status);
         }),
       );
   }
