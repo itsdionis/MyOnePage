@@ -124,6 +124,21 @@ To share a note, click the share button on the page (or run **Share current note
 note the free plan has no room for gets `share: waiting` and is published by itself once there is room (a page taken
 offline, or a plan).
 
+## How it's built
+
+MyOnePage is built by a three-time CTO, to the standard of software a team trusts with its plans:
+
+- **Tested end to end.** Before a change to sharing ships, 100+ automated checks drive a real Obsidian (this plugin,
+  freshly built, in a temp vault) and a real Chrome against a fresh copy of the server: the first share, edits
+  syncing both ways, conflicts, sign-in, the free limit, restarts.
+- **End-to-end encrypted with standard cryptography.** AES-256-GCM through Web Crypto (`engine/seal.js`), with the
+  page's address bound into the ciphertext as additional data. The key never leaves the link's `#` fragment.
+- **No silent overwrites.** Every web save carries the version it started from (`If-Match`); a stale save is refused.
+  A note changed on both sides keeps the web version next to it as a separate file.
+- **Checked on every release.** TypeScript, ESLint with Obsidian's review rules, Prettier, and `check.mjs` on every
+  example and template (`pnpm verify`); the release itself is built by GitHub Actions from the tagged code.
+- **Runs everywhere Obsidian does,** including Obsidian mobile on older iPhones: no Node APIs in the engine.
+
 ## Files
 
 The plugin writes only to your vault: to the notes you edit on a page, to `<note>.html` when you click **HTML**,
