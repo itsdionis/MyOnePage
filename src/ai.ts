@@ -3,9 +3,9 @@
 // takes the answer back, finds the page in it, puts it through the engine's own converter (md.js) and opens it as a
 // new note next to the source. A page just made from a template ("Fill it with AI" on it) is the outline itself: its
 // text is not sent as notes, and while nobody has changed it the answer takes its place.
-import { Modal, Notice, Setting, TFile, moment, normalizePath } from 'obsidian';
+import { Modal, Notice, Setting, TFile, normalizePath } from 'obsidian';
 import type MyOnePagePlugin from './main';
-import { TEMPLATES, fromTemplate } from './templates';
+import { TEMPLATES, fromTemplate, today } from './templates';
 import type { Template } from './templates';
 import { frontmatter } from './web';
 import MD from '../engine/md.js?api';
@@ -21,7 +21,6 @@ const FORMAT = [...skill.matchAll(/<!-- prompt -->\n([\s\S]*?)<!-- \/prompt -->/
 export const OUTLINES = TEMPLATES.filter((t) => t.slug !== 'blank');
 
 export function promptFor(note: string, purpose: string, template?: Template) {
-  const today = moment().format('YYYY-MM-DD');
   const outline = template
     ? `
 
@@ -39,7 +38,7 @@ ${FORMAT}
 
 ## Rules
 
-1. Start with the frontmatter: \`title\`, \`updated: ${today}\`, \`lang\` (the language of my notes, two letters), \`myone.page: true\`. Write the page in that language.
+1. Start with the frontmatter: \`title\`, \`updated: ${today()}\`, \`lang\` (the language of my notes, two letters), \`myone.page: true\`. Write the page in that language.
 2. Then one to three \`# \` hero lines, the last one with one ==highlight==, and a one-paragraph subtitle.
 3. Split the page into \`## \` parts, and use the blocks from the table: numbers as stats, steps as flow, comparisons as tables. Anything else shows as plain text.
 4. Keep every fact from my notes and invent none: no numbers, names or dates that are not in them.
@@ -94,7 +93,7 @@ export function pageText(answer: string) {
 // list outside a callout), not ordinary paragraphs.
 export function toPage(text: string, fallbackTitle: string) {
   const { doc, issues } = MD.parse(text);
-  doc.meta.updated = moment().format('YYYY-MM-DD');
+  doc.meta.updated = today();
   if (!doc.meta.title)
     doc.meta.title =
       doc.hero.lines

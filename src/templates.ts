@@ -2,7 +2,7 @@
 // what goes there. ../examples has the same pages finished (myone.page/examples shows them). A new page gets today's
 // `updated:` and `template: <slug>`, which shows a line above the page until it is dismissed (see MyOnePageView).
 // `share:`, `editors:` and `viewers:` never come along.
-import { FuzzySuggestModal, moment, normalizePath } from 'obsidian';
+import { FuzzySuggestModal, normalizePath } from 'obsidian';
 import type { App, FuzzyMatch, TFile, TFolder } from 'obsidian';
 import investorUpdate from '../templates/investor-update.md?text';
 import boardPreRead from '../templates/board-pre-read.md?text';
@@ -72,12 +72,18 @@ export function fromTemplate(t: Template, today: string) {
   return `---\n${fm}template: ${t.slug}\n---\n${t.text.slice(m[0].length)}`;
 }
 
+// Today as YYYY-MM-DD, local time (Obsidian's moment is untyped without the moment package).
+export function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 // Creates `<title>.md` in the folder (` 2`, ` 3` when taken); never overwrites.
 export async function newFromTemplate(app: App, t: Template, folder: TFolder): Promise<TFile> {
   const dir = folder.isRoot() ? '' : `${folder.path}/`;
   let path = normalizePath(`${dir}${t.title}.md`);
   for (let n = 2; app.vault.getAbstractFileByPath(path); n++) path = normalizePath(`${dir}${t.title} ${n}.md`);
-  return app.vault.create(path, fromTemplate(t, moment().format('YYYY-MM-DD')));
+  return app.vault.create(path, fromTemplate(t, today()));
 }
 
 export class TemplatePicker extends FuzzySuggestModal<Template> {

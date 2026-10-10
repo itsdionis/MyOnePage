@@ -118,7 +118,7 @@ automatic:
    many parts that is. **Start from** picks a template for the AI to follow (the one a page was made from, on
    **Fill it with AI**; while that page is still the bare outline, the answer replaces it). Works on mobile too.
 2. **The Claude app (claude.ai, Claude desktop).** Give Claude the whole format once as a skill: download
-   `myone-page-skill.zip` from [myone.page/ai](https://myone.page/ai) (or from a release) and upload it in Claude
+   `myone-page-skill.zip` from [myone.page/ai](https://myone.page/ai) and upload it in Claude
    under Customize → Skills → + → Create skill → Upload a skill (code execution must be on, in Settings →
    Capabilities). On a paid plan, Customize → Plugins → Add marketplace → `itsdionis/MyOnePage` does the same and
    keeps it up to date. Then ask Claude for a one-pager and paste its answer into **Make a page
@@ -154,6 +154,12 @@ click share. Everything above (pages, editing, HTML export, writing pages with A
   nothing else. It sends only notes that have `share:` in their frontmatter, and syncs them both ways (every 60
   seconds by default, and a few seconds after you stop typing in a shared note). Notes without `share:` never leave
   your device.
+- **Files and clipboard.** The plugin reads and writes your notes only through Obsidian's vault API. It lists the
+  vault's Markdown files to find the notes with `share:` (to sync them and list them under **Shared pages**). It
+  writes the clipboard when you copy a link or a request for an AI chat, and reads it only when you click **Paste
+  the answer** in **Make a page with AI**. It never uses Node's `fs`: the one place `fs` appears in `main.js` is
+  `check.mjs`, the page checker, which **Set up** (Install for coding agents) writes into your vault as a text file
+  for a coding agent to run; the plugin itself never runs it.
 - **End-to-end encrypted.** A shared note is encrypted on your device (AES-GCM) before it is sent. The key is the
   part of the link after `#`, which browsers never send to the server, so the server stores only ciphertext. Besides
   that, it receives the `editors:` and `viewers:` lists, so it can check who may open the page.

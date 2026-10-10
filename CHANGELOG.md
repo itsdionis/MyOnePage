@@ -18,7 +18,7 @@
 - Fewer buttons: a page's header has one **Open as Markdown** instead of reading view and editing view, and the
   **Shared pages** icon shows in the ribbon once a note is shared (the command is always there).
 - The skill no longer needs the plugin's repository or a terminal: its checker and the templates come with it, and it
-  works in a chat too. It is attached to each release as `myone-page-skill.zip`, and installs in Claude Code from this repository.
+  works in a chat too. Download it for the Claude app from myone.page/ai; it installs in Claude Code from this repository.
 
 - Share with no setup: the first share makes an account on myone.page with a random token, no sign-up and no token
   to copy. The token now lives in the plugin's settings (moved from this device's local storage), so devices that

@@ -1,8 +1,8 @@
 name: Release
 
 # Push a tag equal to the version in manifest.json (e.g. 1.0.1, no "v"): this builds main.js and opens a draft release
-# with main.js, manifest.json and styles.css, and the skill for the Claude app (myone-page-skill.zip). Add notes and
-# publish it on GitHub.
+# with main.js, manifest.json and styles.css (Obsidian downloads only these; the skill zip is served at myone.page/ai).
+# Add notes and publish it on GitHub.
 on:
   push:
     tags:
@@ -38,9 +38,6 @@ jobs:
       - name: Format, lint, check the sample page, build
         run: pnpm verify
 
-      - name: The skill for the Claude app
-        run: node skill.mjs --zip myone-page-skill.zip
-
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
         with:
@@ -48,11 +45,10 @@ jobs:
             main.js
             manifest.json
             styles.css
-            myone-page-skill.zip
 
       - name: Create draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${GITHUB_REF#refs/tags/}"
-          gh release create "$tag" --title "$tag" --draft main.js manifest.json styles.css myone-page-skill.zip
+          gh release create "$tag" --title "$tag" --draft main.js manifest.json styles.css
