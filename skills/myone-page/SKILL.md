@@ -54,11 +54,11 @@ note shown on the right of the divider
   plain Markdown), `title` (tab title), `updated` (`YYYY-MM-DD`, bumped on every save from the page),
   `lang` (default `ru`; set it), `view` (`tabs` opens the page as one tab per section; default `scroll`).
   Other keys (`tags`, `aliases`…) are kept as they are.
-- Sharing on the web (synced by the plugin, when the owner has set up a sharing server): `share: new`
+- Sharing on the web (the share button in the plugin, which needs no setup; 3 pages free): `share: new`
   publishes the note and becomes `share: https://<server>/p/<account>/<id>#k=<key>`, the full link (the part
   after `#` is the key the page is encrypted with; never shorten or edit it, and treat the link as a secret).
   `editors:` and `viewers:` are lists of emails, `"@domain"`s (quoted), or `anyone` (whoever has the link;
-  readers need no sign-in). Only the owner sets these three; they never reach the web copy. Never add
+  readers need no sign-in; needs a paid plan). Only the owner sets these three; they never reach the web copy. Never add
   `share:` unless asked: it puts the page online. Removing `share:` takes it offline; `share: new` again
   gives it a new link and the old one stops working.
 - Each `## ` part starts a section. The page lists sections in a side menu and can show them as tabs, so

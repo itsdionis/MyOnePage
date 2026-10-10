@@ -6,7 +6,8 @@
   to copy. The token now lives in the plugin's settings (moved from this device's local storage), so devices that
   sync the vault share it. The globe button opens a page signed in as its owner (a one-time link).
 - A note shared from another account is left alone (with a notice) instead of being moved to this one.
-- Server: empty means myone.page.
+- Settings: an Account row (who owns it, the plan, pages used; Sign in / See plans). Server and token moved under
+  "Use another server or token"; an empty server means myone.page.
 
 - Sharing: when the server refuses a page (on myone.page: more than 3 shared pages, or `anyone`, on the free plan),
   the plugin says why in a notice, once per note, instead of skipping the page silently.

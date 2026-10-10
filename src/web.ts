@@ -282,6 +282,14 @@ export class WebSync {
     return 'could not make an account, try again';
   }
 
+  // Who owns this account, its plan and pages used (the settings tab), or null when the server can't be reached.
+  async me(): Promise<{ owners: string[]; paid: boolean; used: number; limit: number | null } | null> {
+    const r = await this.call('GET', '/api/owner/me').catch(() => null);
+    return r && r.status === 200
+      ? (r.data as { owners: string[]; paid: boolean; used: number; limit: number | null })
+      : null;
+  }
+
   // A URL on the server that signs the visitor in as this account's owner (a one-time code the token asks for).
   // Without one (no token, server down) the plain URL: a page link then asks the owner to sign in as anyone would.
   async ownerLink(url: string) {
@@ -562,9 +570,11 @@ export class WebSync {
 
 export class WebSettings extends WEB.PluginSettingTab {
   plugin: MyOnePagePlugin;
+  advanced: boolean;
   constructor(app: App, plugin: MyOnePagePlugin) {
     super(app, plugin);
     this.plugin = plugin;
+    this.advanced = !!plugin.prefs.server;
   }
   display() {
     const { containerEl: el } = this,
@@ -586,54 +596,66 @@ export class WebSettings extends WEB.PluginSettingTab {
     new WEB.Setting(el).setName('Share on the web').setHeading();
     el.createEl('p', {
       text:
-        'Share a note on the web: put "share: new" in its frontmatter, plus "editors:" and "viewers:" lists of ' +
-        'emails, @domains, or anyone (whoever has the link). share: then holds the link, which is copied when the page is published. ' +
-        'The note is encrypted on this device and the key is the part of the link after #, so the server cannot read it: ' +
-        'whoever has the full link and is allowed in can. To cut off an anyone page, set share: new (a new link). ' +
-        'The share button does all of it. Its first use makes an account on the server (myone.page unless set below) ' +
-        "with a random token kept in this plugin's settings, with no sign-up: 3 pages free, shared with people who sign in; " +
-        'a paid plan for more pages and for anyone links. The globe button on a shared page signs you in as its owner. ' +
-        'Nothing is sent before the first share, and only notes with share:, only to this server.',
+        'The share button on a page publishes the note and copies its link. The first share makes your account on ' +
+        'myone.page, with no sign-up: 3 pages free, for people you list in editors: or viewers: (emails or @domains; ' +
+        'they sign in). A plan adds more pages and links open to anyone. The note is encrypted on this device; the ' +
+        'key is the part of the link after #, so the server cannot read it. Nothing is sent before the first share, ' +
+        'and only notes with share:.',
     });
-    new WEB.Setting(el)
-      .setName('Server')
-      .setDesc(
-        createFragment((f) => {
-          f.appendText('Empty: ');
-          f.createEl('a', { text: 'https://myone.page', href: 'https://myone.page' });
-          f.appendText('. Another server needs a token from its settings page.');
-        }),
-      )
-      .addText((t) =>
-        t
-          .setPlaceholder('https://myone.page')
-          .setValue(p.prefs.server || '')
-          .onChange(async (v) => {
-            p.prefs.server = v.trim();
-            await p.saveSettings();
-          }),
-      );
-    new WEB.Setting(el)
-      .setName('Token')
-      .setDesc(
-        createFragment((f) => {
-          f.appendText(
-            "Made by the first share, or pasted from the server's settings page. Kept in this plugin's settings, " +
-              'so every device that syncs the vault uses the same account: keep it out of a public repository. ',
-          );
-          const a = f.createEl('a', { text: 'Open settings page', href: '#' });
-          a.onclick = (e) => {
-            e.preventDefault();
-            void sync.ownerLink(`${sync.server}/settings`).then((u) => window.open(u));
-          };
-        }),
-      )
-      .addText((t) => {
-        t.inputEl.type = 'password';
-        t.setValue(sync.token).onChange((v) => {
-          sync.token = v.trim();
-        });
+    const account = new WEB.Setting(el).setName('Account');
+    const open = (path: string) => () => void sync.ownerLink(`${sync.server}${path}`).then((u) => window.open(u));
+    if (!sync.ready) account.setDesc('Not set up yet: your first share makes it.');
+    else {
+      account.setDesc('…');
+      void sync.me().then((me) => {
+        if (!me) return account.setDesc(`Could not reach ${sync.server}.`);
+        const plan = me.paid ? 'Plan: unlimited pages.' : `Free: ${me.used} of ${me.limit ?? 3} pages shared.`;
+        account.setDesc(
+          me.owners.length
+            ? `Owned by ${me.owners.join(', ')}. ${plan}`
+            : `Not signed in yet. ${plan} Sign in to own your pages: all of them in one place, plans, and an alert if anyone else uses your link.`,
+        );
+        account.addButton((b) => b.setButtonText(me.owners.length ? 'Open' : 'Sign in').onClick(open('/settings')));
+        if (!me.paid) account.addButton((b) => b.setButtonText('See plans').onClick(open('/settings')));
       });
+    }
+    const more: WEB.Setting[] = [];
+    new WEB.Setting(el)
+      .setName('Use another server or token')
+      .setDesc('For a server of your own, or to paste a token made on a settings page.')
+      .addToggle((t) =>
+        t.setValue(this.advanced).onChange((v) => {
+          this.advanced = v;
+          for (const m of more) m.settingEl.toggle(v);
+        }),
+      );
+    more.push(
+      new WEB.Setting(el)
+        .setName('Server')
+        .setDesc('Empty: https://myone.page.')
+        .addText((t) =>
+          t
+            .setPlaceholder('https://myone.page')
+            .setValue(p.prefs.server || '')
+            .onChange(async (v) => {
+              p.prefs.server = v.trim();
+              await p.saveSettings();
+            }),
+        ),
+      new WEB.Setting(el)
+        .setName('Token')
+        .setDesc(
+          "Made by the first share, or pasted from the settings page. Kept in this plugin's settings, so every " +
+            'device that syncs the vault uses the same account: keep it out of a public repository.',
+        )
+        .addText((t) => {
+          t.inputEl.type = 'password';
+          t.setValue(sync.token).onChange((v) => {
+            sync.token = v.trim();
+          });
+        }),
+    );
+    for (const m of more) m.settingEl.toggle(this.advanced);
     new WEB.Setting(el)
       .setName('Sync every')
       .setDesc(
