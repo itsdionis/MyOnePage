@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.5 (unreleased)
+
+- Releases carry only the plugin's files (`main.js`, `manifest.json`, `styles.css`). The skill for the Claude app is
+  at myone.page/ai.
+- The README says what the plugin reads and writes: notes only through Obsidian, the clipboard only when you copy or
+  click **Paste the answer**, and never your files directly.
+- Small fixes from Obsidian's plugin review; nothing changes in how pages look or work.
+
 ## 1.0.4
 
 - Start from a template: **New page from template** (command, ribbon, **New MyOnePage…** on a folder, and the
