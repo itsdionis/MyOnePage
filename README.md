@@ -4,9 +4,7 @@ Stop rewriting your notes for your team. Add `myone.page: true` to a note and it
 big numbers, cards, funnels, tables, a Gantt timeline. Click any text to edit it, and the edit is saved back to the
 note. It stays a plain Markdown note you can still open, search and link.
 
-<!-- GIF (10–15s): plain note -> page -> click-edit -> share link -> the web edit lands back in the note.
-     Copy ../docs/myonepage-demo.gif (private repo) to assets/demo.gif here, and replace this comment with:
-     ![MyOnePage demo](assets/demo.gif) -->
+![MyOnePage: a Markdown note becomes a page you edit in place and share as a link](https://raw.githubusercontent.com/itsdionis/MyOnePage/main/assets/demo.gif)
 
 **See finished pages first** (each one is a single note, open in a browser, no sign-in):
 [investor update](https://myone.page/examples/investor-update) ·
