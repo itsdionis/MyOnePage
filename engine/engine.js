@@ -1,5 +1,6 @@
 // page.html?p=<slug> renders and edits pages/<slug>.md. md.js (loaded first) reads and writes the Markdown.
 // A host may set window.MYONEPAGE={data, slug} first (the web server does): data is the page's URL.
+// credit: HTML the host wants at the end of an exported HTML file (the web server's credit line; the plugin sets none).
 // It may also set open(body)/seal(text), async, to decrypt what it loads and encrypt what it saves, and hash:
 // a fragment part (the key, "k=...") that the engine keeps in front of its own (#k=...&edit, #k=...&s3).
 document.body.insertAdjacentHTML(
@@ -1417,6 +1418,7 @@ ${esc(css, 'style')}
 </head>
 <body>
 <script type="text/markdown" id="seed" data-shared>${exportText().replace(/<\/(script)/gi, '<\\/$1')}</script>
+${CFG.credit || ''}
 <script>
 ${esc(md, 'script')}
 </script>
