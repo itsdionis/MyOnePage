@@ -10,6 +10,9 @@ import { WebSync, WebSettings, frontmatter, webLive, webList, webShare } from '.
 import type { Frontmatter } from './web';
 import { TEMPLATES, TemplatePicker, newFromTemplate } from './templates';
 import type { Template } from './templates';
+import { MakeWithAI } from './ai';
+import { SkillInstall } from './skill';
+import type { SkillPrefs } from './skill';
 
 const ENGINE = { css, md, js };
 
@@ -54,6 +57,7 @@ export interface Prefs {
   every: number;
   htmlFolder: string;
   welcomed: boolean; // the first-run notice was shown
+  skill?: SkillPrefs; // the skill installed in the vault for coding agents (see skill.ts)
 }
 type Mode = 'source' | 'preview';
 
@@ -92,8 +96,9 @@ class MyOnePageView extends TextFileView {
   onload() {
     super.onload();
     this.addAction('rotate-cw', 'Reload the page from the file', () => this.show(true));
-    this.addAction('book-open', 'Reading view', () => this.plugin.asMarkdown(this.leaf, this.file, 'preview'));
-    this.addAction('pencil', 'Editing view', () => this.plugin.asMarkdown(this.leaf, this.file, 'source'));
+    // one button back to the note, in the user's own default mode (reading or editing): the Markdown tab has its own
+    // switch between the two
+    this.addAction('file-text', 'Open as Markdown', () => this.plugin.asMarkdown(this.leaf, this.file));
     this.shareAction = this.addAction('share-2', 'Share on the web', () => this.plugin.shareOrOpen(this.file));
     this.registerDomEvent(window, 'message', (e) => void this.onMessage(e));
   }
@@ -141,6 +146,8 @@ class MyOnePageView extends TextFileView {
     el.toggle(on);
     if (!file || !on) return;
     el.createSpan({ text: 'Click any text to write your own. Every field says what goes there.' });
+    const ai = el.createEl('button', { cls: 'myone-page-sample-ai', text: 'Fill it with AI' });
+    ai.onclick = () => new MakeWithAI(this.plugin, file).open();
     const b = el.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Dismiss' } });
     setIcon(b, 'x');
     b.onclick = () =>
@@ -264,6 +271,7 @@ class SharedPages extends Modal {
 export default class MyOnePagePlugin extends Plugin {
   prefs: Prefs = { server: '', token: '', every: 60, htmlFolder: '', welcomed: false };
   web!: WebSync;
+  skill!: SkillInstall;
   every = 0;
   markdownLeaves = new WeakMap<WorkspaceLeaf, string>(); // leaf -> path the user chose to read as Markdown
   pageActions = new WeakMap<View, HTMLElement>(); // Markdown view -> its MyOnePage button
@@ -271,25 +279,38 @@ export default class MyOnePagePlugin extends Plugin {
   async onload() {
     this.prefs = Object.assign(this.prefs, (await this.loadData()) as Partial<Prefs> | null);
     this.web = new WebSync(this);
+    this.skill = new SkillInstall(this);
     this.addSettingTab(new WebSettings(this.app, this));
     this.app.workspace.onLayoutReady(() => {
       this.schedule();
       this.web.soon(3000);
       if (!this.prefs.welcomed) void this.welcome();
+      void this.skill.refresh();
+      if (this.app.vault.getMarkdownFiles().some((f) => frontmatter(this.app, f).share != null)) this.sharedRibbon();
     });
 
     this.addCommand({ id: 'template', name: 'New page from template', callback: () => this.pickTemplate() });
-    this.addRibbonIcon('layout-template', 'New MyOnePage from a template', () => this.pickTemplate());
+    this.addRibbonIcon('layout-template', 'New MyOnePage', () => this.pickTemplate());
     // obsidian://myone-page?template=<slug>: the "Use this template" button on myone.page/examples/<slug>
     this.registerObsidianProtocolHandler('myone-page', (params) => {
       const t = TEMPLATES.find((x) => x.slug === params.template);
       if (t) void this.fromTemplate(t);
       else new Notice(`MyOnePage: there is no template "${params.template ?? ''}".`);
     });
+    this.addCommand({
+      id: 'ai-page',
+      name: 'Make a page with AI',
+      callback: () => {
+        const file = this.app.workspace.getActiveFile();
+        new MakeWithAI(this, file?.extension === 'md' ? file : null).open();
+      },
+    });
     // a shared note changed (seen once Obsidian has re-read its frontmatter): sync once typing stops
     this.registerEvent(
       this.app.metadataCache.on('changed', (file, data, cache) => {
-        if (cache?.frontmatter?.share != null) this.web.soon();
+        if (cache?.frontmatter?.share == null) return;
+        this.web.soon();
+        this.sharedRibbon();
       }),
     );
     this.addCommand({
@@ -303,7 +324,6 @@ export default class MyOnePagePlugin extends Plugin {
       },
     });
     this.addCommand({ id: 'web-list', name: 'List shared pages', callback: () => new SharedPages(this).open() });
-    this.addRibbonIcon('globe', 'Shared pages', () => new SharedPages(this).open());
     this.registerEvent(
       this.app.metadataCache.on('changed', (file) => {
         for (const leaf of this.app.workspace.getLeavesOfType(VIEW))
@@ -393,6 +413,13 @@ export default class MyOnePagePlugin extends Plugin {
               .onClick(() => this.pickTemplate(file)),
           );
         if (!(file instanceof TFile) || file.extension !== 'md') return;
+        // in the note's ⋯ menu and its right-click menu: no button on every note's header
+        menu.addItem((i) =>
+          i
+            .setTitle('Make a page with AI')
+            .setIcon('sparkles')
+            .onClick(() => new MakeWithAI(this, file).open()),
+        );
         if (leaf && leaf.view.getViewType() === VIEW)
           menu.addItem((i) =>
             i
@@ -430,8 +457,23 @@ export default class MyOnePagePlugin extends Plugin {
 
   // The template picker; the new page goes in the folder, else next to the open note, else where Obsidian puts new
   // notes (its "Default location for new notes").
+  // It is also the one place to start a page from notes: "With AI, from your notes" comes first.
   pickTemplate(folder?: TFolder) {
-    new TemplatePicker(this.app, (t) => void this.fromTemplate(t, folder)).open();
+    const ai: Template = {
+      slug: 'ai',
+      title: 'With AI, from your notes',
+      line: 'Any AI chat turns the open note into a page; you paste its answer back',
+      text: '',
+    };
+    new TemplatePicker(
+      this.app,
+      (t) => {
+        if (t !== ai) return void this.fromTemplate(t, folder);
+        const file = this.app.workspace.getActiveFile();
+        new MakeWithAI(this, file?.extension === 'md' ? file : null).open();
+      },
+      [ai, ...TEMPLATES],
+    ).open();
   }
   async fromTemplate(t: Template, folder?: TFolder) {
     const dir = folder ?? this.app.workspace.getActiveFile()?.parent ?? this.app.fileManager.getNewFileParent('');
@@ -448,7 +490,10 @@ export default class MyOnePagePlugin extends Plugin {
   async welcome() {
     const f = createFragment((d) => {
       d.appendText('MyOnePage is ready. ');
-      d.createEl('a', { text: 'Try it: start from a template', href: '#' }).onclick = (e) => {
+      d.createEl('a', {
+        text: 'Make your first page: from a template, or from your notes with AI',
+        href: '#',
+      }).onclick = (e) => {
         e.preventDefault();
         this.pickTemplate();
       };
@@ -460,6 +505,12 @@ export default class MyOnePagePlugin extends Plugin {
 
   async saveSettings() {
     await this.saveData(this.prefs);
+  }
+
+  // The Shared pages icon, only once a note has share: (before that it would list nothing). The command is always there.
+  sharedIcon: HTMLElement | null = null;
+  sharedRibbon() {
+    this.sharedIcon ??= this.addRibbonIcon('globe', 'Shared pages', () => new SharedPages(this).open());
   }
 
   shareState(file: TFile) {
@@ -551,6 +602,10 @@ export default class MyOnePagePlugin extends Plugin {
   flagged(file: TFile) {
     const fm = frontmatter(this.app, file);
     return fm[FLAG] === true || fm[FLAG] === 'true';
+  }
+  // A new page in a new tab (Make a page with AI).
+  openPage(file: TFile) {
+    return this.app.workspace.getLeaf('tab').setViewState({ type: VIEW, state: { file: file.path }, active: true });
   }
   asPage(leaf: WorkspaceLeaf, file: TFile, active = true) {
     this.markdownLeaves.delete(leaf);

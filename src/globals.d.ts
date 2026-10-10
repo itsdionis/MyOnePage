@@ -15,3 +15,24 @@ interface Seal {
 interface Window {
   SEAL: Seal;
 }
+
+// engine/md.js as a module (see esbuild.config.mjs): the page's own Markdown converter, the part the plugin uses.
+declare module '*md.js?api' {
+  interface Issue {
+    line: number;
+    level: 'error' | 'warn' | 'info';
+    msg: string;
+  }
+  interface Doc {
+    meta: Record<string, string | undefined>;
+    fm?: string;
+    hero: { lines: string[]; highlight: string; tail: string; sub: string };
+    blocks: { type: string }[];
+  }
+  const MD: {
+    parse(src: string): { doc: Doc; issues: Issue[]; at: number[] };
+    serialize(doc: Doc): string;
+    check(doc: Doc, at?: number[]): Issue[];
+  };
+  export default MD;
+}

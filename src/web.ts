@@ -12,6 +12,7 @@
 import * as WEB from 'obsidian';
 import type { App, TFile } from 'obsidian';
 import type MyOnePagePlugin from './main';
+import { skillSettings } from './skill';
 import '../engine/seal.js'; // a classic script: sets window.SEAL
 
 const { SEAL } = window;
@@ -629,9 +630,12 @@ export class WebSettings extends WEB.PluginSettingTab {
       sync = p.web;
     el.empty();
     new WEB.Setting(el)
-      .setName('Start from a template')
-      .setDesc('A finished sample page (an investor update, a proposal, a brief…) to overwrite with your own text.')
-      .addButton((b) => b.setButtonText('Choose a template').onClick(() => p.pickTemplate()));
+      .setName('Make a page')
+      .setDesc(
+        'From a template (an investor update, a proposal, a brief…) to write over, or from your notes with any AI ' +
+          "chat. Also the page icon in the left ribbon, and Make a page with AI in any note's ⋯ menu.",
+      )
+      .addButton((b) => b.setButtonText('Make a page').onClick(() => p.pickTemplate()));
     new WEB.Setting(el)
       .setName('HTML export folder')
       .setDesc('Where the HTML button saves <note>.html, relative to the vault. Empty: next to the note.')
@@ -644,6 +648,7 @@ export class WebSettings extends WEB.PluginSettingTab {
             await p.saveSettings();
           }),
       );
+    skillSettings(el, p);
     new WEB.Setting(el).setName('Share on the web').setHeading();
     el.createEl('p', {
       text:

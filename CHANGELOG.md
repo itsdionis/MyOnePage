@@ -7,6 +7,19 @@
   results report, product brief, strategy memo, or blank. Every field says what goes there; a line above the page
   says to click and write, until you dismiss it. **Use this template** on the example pages of myone.page does the same from the
   browser. The first start points to the templates.
+- **Make a page with AI**: in every note's ⋯ and right-click menu, first in **New MyOnePage**
+  (the ribbon icon), and as a command. Copy a request into Claude, ChatGPT or any AI
+  chat, paste the answer back, and the page opens as a new note next to yours. Parts the page can't read stay as
+  text, and a notice says how many. **Start from** a template, and the AI follows its outline; on a page just made
+  from a template, **Fill it with AI** fills that page. Works on mobile.
+- Settings, **Write pages with AI**: a link to download the skill for the Claude app (myone.page/ai), and on desktop
+  **Set up Claude Code, Codex and Cursor**, which puts the skill, the templates and the checker in the vault
+  (`.claude/skills/myone-page/`, `.agents/skills/myone-page/`) and keeps them up to date unless you edit them.
+- Fewer buttons: a page's header has one **Open as Markdown** instead of reading view and editing view, and the
+  **Shared pages** icon shows in the ribbon once a note is shared (the command is always there).
+- The skill no longer needs the plugin's repository or a terminal: its checker and the templates come with it, and it
+  works in a chat too. It is attached to each release as `myone-page-skill.zip`, and installs in Claude Code from this repository.
+
 - Share with no setup: the first share makes an account on myone.page with a random token, no sign-up and no token
   to copy. The token now lives in the plugin's settings (moved from this device's local storage), so devices that
   sync the vault share it. The globe button opens a page signed in as its owner (a one-time link).

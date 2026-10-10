@@ -12,23 +12,44 @@ one click away). Every edit on the page rewrites the file in the canonical form 
 **Where it goes.** Anywhere in the vault, filed like any other note. Follow the vault's own conventions
 (its `CLAUDE.md`, if it has one) for folder and file name.
 
-**Examples to copy from:** `examples/one-pager.md` in the plugin repository uses every block type. The other
-files in `examples/` are finished pages of common kinds (investor update, board pre-read, client proposal, client
-results report, product brief, strategy memo), and `templates/` has the same pages as outlines: start from the closest
-one when the owner asks for that kind of page.
+**Example to copy from:** `example.md` next to this file uses every block type.
+
+**Templates:** `templates/` next to this file has outlines of the pages founders share most, each in an established
+format, with every field saying what goes there. When the owner asks for one of these kinds of page, start from its
+outline: keep its parts and blocks, replace every `[placeholder]` and sample line with what the notes say, and drop
+a part the notes have nothing for rather than invent it.
+
+| Template | For |
+|---|---|
+| `investor-update.md` | monthly: numbers, highlights and lowlights, asks, goals (YC's format) |
+| `board-pre-read.md` | quarterly: the big picture, numbers against plan, one decision |
+| `client-proposal.md` | options as cards, a timeline and a price table |
+| `client-report.md` | quarterly for a client: results against goals, the next 90 days |
+| `product-brief.md` | problem, appetite, solution, rabbit holes, no-gos (Shape Up's pitch) |
+| `strategy-memo.md` | diagnosis, guiding policy, coherent actions (Rumelt's kernel) |
+| `blank.md` | a title and one part |
+
+Finished pages of each kind are in the plugin repository's `examples/` and at https://myone.page/examples/<name>.
 
 ## Workflow
 
-1. Write the file in the format below.
-2. Check it with the checker from the plugin repository (Node 18 or later, no install):
-   `node <repo>/check.mjs <file>`; add `--fix` to rewrite it in canonical form.
-   Pass the note's path only: a folder glob also checks ordinary notes, which are not MyOnePage pages.
-   - `error` lines must be fixed. `warn` lines are usually a block that fell back to plain text.
-   - `info: … plain text, not a styled block` lists every `p` block. Confirm each one is meant to be plain.
-   - `not formatted` is harmless: run it again with `--fix` to rewrite it canonically.
-3. If the page is open in Obsidian it picks up your change by itself; if not, the owner presses ⟳ in the
-   tab header. If they edited before that, the page refuses to save ("the file changed on disk") rather
-   than overwrite your change.
+1. Write the page in the format below.
+2. Check it.
+   - **If you can run code** (Claude Code, Claude with code execution, any coding agent): run the checker next
+     to this file, `node check.mjs <file>` (Node 18 or later, no install; it reads `md.js` beside it). Add `--fix`
+     to rewrite the page in canonical form. Pass the note's path only: a folder glob also checks ordinary notes,
+     which are not MyOnePage pages.
+     - `error` lines must be fixed. `warn` lines are usually a block that fell back to plain text.
+     - `info: … plain text, not a styled block` lists every `p` block. Confirm each one is meant to be plain.
+     - `not formatted` is harmless: run it again with `--fix` to rewrite it canonically.
+   - **If you cannot run code** (a chat): follow the rules below exactly, and answer with the whole page in one
+     code block fenced with four backticks (` ````markdown `), so a Gantt chart's own fence stays inside it. The
+     user pastes it into **Make a page with AI** in Obsidian, which checks it and opens it as a page.
+3. If you can write to the vault, write the note there. If the page is open in Obsidian it picks up your change by
+   itself; if not, the owner presses ⟳ in the tab header. If they edited before that, the page refuses to save
+   ("the file changed on disk") rather than overwrite your change.
+
+<!-- prompt -->
 
 ## The page
 
@@ -57,13 +78,6 @@ note shown on the right of the divider
   plain Markdown), `title` (tab title), `updated` (`YYYY-MM-DD`, bumped on every save from the page),
   `lang` (default `ru`; set it), `view` (`tabs` opens the page as one tab per section; default `scroll`).
   Other keys (`tags`, `aliases`…) are kept as they are.
-- Sharing on the web (the share button in the plugin, which needs no setup; 3 pages free): `share: new`
-  publishes the note and becomes `share: https://<server>/p/<account>/<id>#k=<key>`, the full link (the part
-  after `#` is the key the page is encrypted with; never shorten or edit it, and treat the link as a secret).
-  `editors:` and `viewers:` are lists of emails, `"@domain"`s (quoted), or `anyone` (whoever has the link;
-  readers need no sign-in; needs a paid plan). Only the owner sets these three; they never reach the web copy. Never add
-  `share:` unless asked: it puts the page online. Removing `share:` takes it offline; `share: new` again
-  gives it a new link and the old one stops working. `share: waiting` means the free plan had no room: the plugin publishes it once there is.
 - Each `## ` part starts a section. The page lists sections in a side menu and can show them as tabs, so
   long pages should be split into parts.
 - Hero: the `# ` lines at the very top, one per line. The last line may hold one `==highlight==`
@@ -118,6 +132,8 @@ In lists, `[x]` and `[!]` go right after the dash: `> - [x] **0** open bugs`.
 > #### Docs [example.com/docs](https://example.com/docs)
 > - `/setup` `/connect` first steps for a new account
 ```
+
+<!-- /prompt -->
 
 ### Tables
 
@@ -191,6 +207,8 @@ segments, `m` key metrics, `h` channels, `k` cost structure, `r` revenue streams
 > - Guided setup in one call
 ```
 
+<!-- prompt -->
+
 ## Text inside blocks
 
 Fields are Markdown: `**bold**`, `*italic*`, `==highlight==`, `` `code` ``, `[link](url)` and
@@ -206,17 +224,30 @@ the formatter adds the backslash if you forget. Inside a bold slot (`**42**`, `*
   `### Heading` above the block instead.
 - HTML. It shows as literal text.
 
+<!-- /prompt -->
+
+## Sharing on the web
+
+The share button in the plugin (no setup; 3 pages free) adds `share: new`, which publishes the note and
+becomes `share: https://<server>/p/<account>/<id>#k=<key>`, the full link (the part after `#` is the key the
+page is encrypted with; never shorten or edit it, and treat the link as a secret). `editors:` and `viewers:` are
+lists of emails, `"@domain"`s (quoted), or `anyone` (whoever has the link; readers need no sign-in; needs a paid
+plan). Only the owner sets these three; they never reach the web copy. Never add `share:` unless asked: it puts
+the page online. Removing `share:` takes it offline; `share: new` again gives it a new link and the old one stops
+working. `share: waiting` means the free plan had no room: the plugin publishes it once there is.
+
 ## The plugin and the engine (changing how pages work)
 
 Writing pages needs only this skill and the checker. Changing how pages look or behave is code in the
-plugin repository:
+plugin repository, https://github.com/itsdionis/MyOnePage:
 
 | What | Where |
 |---|---|
 | Format: `parse()`, `serialize()`, `check()` | `engine/md.js` |
 | Renderer and inline editor | `engine/engine.js`, styles and colour tokens in `engine/engine.css` |
-| Obsidian plugin (view, header buttons, commands, save, HTML export) | `src/main.js`, `styles.css` |
-| Sharing (encryption, sync with the server) | `engine/seal.js`, `src/web.js` |
+| Obsidian plugin (view, header buttons, commands, save, HTML export) | `src/main.ts`, `styles.css` |
+| Make a page with AI, the skill install | `src/ai.ts`, `src/skill.ts` |
+| Sharing (encryption, sync with the server) | `engine/seal.js`, `src/web.ts` |
 | Checker and formatter | `check.mjs` |
 | Build | `pnpm build` (esbuild, writes `main.js`); `pnpm verify` before a release |
 

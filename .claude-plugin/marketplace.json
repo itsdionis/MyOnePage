@@ -1,0 +1,13 @@
+{
+  "name": "myonepage",
+  "owner": { "name": "Dionis Lebedev", "url": "https://github.com/itsdionis" },
+  "description": "MyOnePage: one-page reports in Obsidian, written by Claude",
+  "plugins": [
+    {
+      "name": "myone-page",
+      "source": ".",
+      "description": "The myone-page skill: write and check MyOnePage notes (styled, editable one-page reports in Obsidian)",
+      "skills": ["./skills/"]
+    }
+  ]
+}

@@ -12,7 +12,9 @@ export default defineConfig([
     files: ['src/**/*.ts'],
     extends: [obsidianmd.configs.recommended],
     languageOptions: { globals: globals.browser, parserOptions: { projectService: true } },
-    rules: { 'obsidianmd/ui/sentence-case': ['warn', { ignoreWords: ['MyOnePage'] }] },
+    rules: {
+      'obsidianmd/ui/sentence-case': ['warn', { ignoreWords: ['MyOnePage', 'Claude', 'Code', 'Codex', 'Cursor'] }],
+    },
   },
   {
     files: ['engine/**/*.js'],

@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "node check.mjs examples/*.md templates/*.md",
-    "verify": "pnpm format:check && pnpm lint && pnpm check && pnpm build"
+    "skill": "node skill.mjs",
+    "verify": "pnpm format:check && pnpm lint && pnpm check && node skill.mjs --check && pnpm build"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

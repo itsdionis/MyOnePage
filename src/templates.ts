@@ -82,13 +82,15 @@ export async function newFromTemplate(app: App, t: Template, folder: TFolder): P
 
 export class TemplatePicker extends FuzzySuggestModal<Template> {
   pick: (t: Template) => void;
-  constructor(app: App, pick: (t: Template) => void) {
+  items: Template[];
+  constructor(app: App, pick: (t: Template) => void, items = TEMPLATES) {
     super(app);
     this.pick = pick;
-    this.setPlaceholder('Start a page from a template');
+    this.items = items;
+    this.setPlaceholder('Make a page: from a template, or from your notes with AI');
   }
   getItems() {
-    return TEMPLATES;
+    return this.items;
   }
   getItemText(t: Template) {
     return `${t.title} ${t.line}`;

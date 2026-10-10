@@ -76,3 +76,23 @@
   display: block;
   color: var(--text-muted);
 }
+.myone-page-ai h4 {
+  margin: 18px 0 4px;
+}
+.myone-page-ai-answer {
+  width: 100%;
+  min-height: 160px;
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-small);
+  resize: vertical;
+}
+.myone-page-sample .myone-page-sample-ai {
+  height: auto;
+  padding: 2px 10px;
+  font-size: var(--font-ui-smaller);
+}
+.myone-page-ai-tip {
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
