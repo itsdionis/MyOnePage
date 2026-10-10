@@ -60,7 +60,7 @@ note shown on the right of the divider
   `editors:` and `viewers:` are lists of emails, `"@domain"`s (quoted), or `anyone` (whoever has the link;
   readers need no sign-in; needs a paid plan). Only the owner sets these three; they never reach the web copy. Never add
   `share:` unless asked: it puts the page online. Removing `share:` takes it offline; `share: new` again
-  gives it a new link and the old one stops working.
+  gives it a new link and the old one stops working. `share: waiting` means the free plan had no room: the plugin publishes it once there is.
 - Each `## ` part starts a section. The page lists sections in a side menu and can show them as tabs, so
   long pages should be split into parts.
 - Hero: the `# ` lines at the very top, one per line. The last line may hold one `==highlight==`

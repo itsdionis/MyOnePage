@@ -95,7 +95,9 @@ click share. Everything above (pages, editing, HTML export, the Claude skill) is
 
 To share a note, click the share button on the page (or run **Share current note on the web**). The plugin adds
 `share: new`, publishes the note, writes the link into `share:` and copies it. Add emails, `@domain`s or `anyone` to
-`editors:` and `viewers:` to let people in. Remove `share:` to take the page offline.
+`editors:` and `viewers:` to let people in (`anyone` needs a plan). Remove `share:` to take the page offline. A
+note the free plan has no room for gets `share: waiting` and is published by itself once there is room (a page taken
+offline, or a plan).
 
 ## Files
 

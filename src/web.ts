@@ -214,6 +214,8 @@ export class WebSync {
   status: string;
   warned: Set<string>;
   told = new Set<string>(); // server refusals already shown: "<path>\n<message>"
+  blocked = new Map<string, string>(); // page id -> the lists the server refused ("anyone" on the free plan), as JSON
+  roomAt = 0; // when we last asked the server whether a waiting note fits
   fresh: string | null = null; // the id of a page just given a new link: its link is copied once it is online
 
   constructor(plugin: MyOnePagePlugin) {
@@ -374,6 +376,7 @@ export class WebSync {
     if (list.status !== 200) throw new Error(`server answered ${list.status}`);
     const remote = new Map((list.data as Summary[]).map((p) => [p.id, p]));
 
+    const waiting: TFile[] = []; // share: waiting, refused for the free plan's page limit
     const seen = new Map<string, TFile>(),
       upgraded: string[] = []; // id -> file; notes whose link changed
     for (const file of vault.getMarkdownFiles()) {
@@ -381,6 +384,10 @@ export class WebSync {
       let text = await vault.read(file),
         share = webShare(text);
       if (share == null) continue;
+      if (/^waiting$/i.test(share)) {
+        waiting.push(file);
+        continue;
+      }
       const page = webResolve(share, this.server, acct);
       if (!page) {
         new WEB.Notice(`${file.path}: share: must be "new" or a myone.page link`);
@@ -432,13 +439,35 @@ export class WebSync {
         if (r.status === 200 || r.status === 404) delete state.pages[id];
       }
     this.store(state);
+
+    // Notes waiting for room: once there is some (a page taken offline, a plan), they go back to share: new and are
+    // published. Asked at most every 10 minutes, or on "Sync shared pages now".
+    if (waiting.length && (force || Date.now() - this.roomAt > 10 * 60_000)) {
+      this.roomAt = Date.now();
+      const me = await this.me();
+      const room = !me ? 0 : me.paid ? waiting.length : Math.max(0, (me.limit ?? 0) - me.used);
+      const go = waiting.sort((a, b) => a.stat.mtime - b.stat.mtime).slice(0, room);
+      for (const f of go) {
+        const t = await vault.read(f);
+        await this.replace(f, t, t.replace(/^share:.*$/m, 'share: new'));
+      }
+      if (go.length) {
+        new WEB.Notice(`MyOnePage: publishing ${go.map((f) => f.basename).join(', ')} (there is room now)`);
+        this.soon(1500);
+      }
+    }
   }
 
   async one(state: State, acct: string, page: Page, file: TFile, text: string, summary: Summary | undefined) {
     const { id, key, link } = page,
       address = `${acct}/${id}`;
     const fm = frontmatter(this.app, file);
-    const acl = { editors: webList(fm.editors), viewers: webList(fm.viewers) };
+    const wanted = { editors: webList(fm.editors), viewers: webList(fm.viewers) };
+    // lists the server refused stay unsent until they change; the text keeps syncing with the lists it has
+    const refusedLists = this.blocked.get(id) === JSON.stringify(wanted);
+    if (refusedLists && !summary) return;
+    if (!refusedLists) this.blocked.delete(id);
+    const acl = refusedLists && summary ? { editors: summary.editors, viewers: summary.viewers } : wanted;
     const { pub, own } = webSplit(text);
     let st = state.pages[id];
     if (st && st.conflict) {
@@ -452,13 +481,17 @@ export class WebSync {
         ...acl,
       });
       if (r.status !== 200) {
-        this.refused(file, r);
+        const code = this.refused(file, r);
+        if (code === 'anyone') this.blocked.set(id, JSON.stringify(wanted));
+        if (code === 'limit') await this.wait(file, id);
         return null; // 409: the next round sees the web change
       }
       return (r.data as { version: number }).version;
     };
-    const putAcl = async (base: number) =>
-      this.refused(file, await this.call('PUT', `/api/owner/p/${id}`, { base, text: null, ...acl }));
+    const putAcl = async (base: number) => {
+      if (this.refused(file, await this.call('PUT', `/api/owner/p/${id}`, { base, text: null, ...acl })) === 'anyone')
+        this.blocked.set(id, JSON.stringify(wanted));
+    };
     const keep = (base: string, version: number, extra?: Partial<PageState>) => {
       state.pages[id] = { path: file.path, base, version, key, ...extra };
     };
@@ -538,15 +571,21 @@ export class WebSync {
   }
 
   // A refusal the server explains (402: the free plan's limits) is shown once per note and message, not every round.
-  refused(file: TFile, r: { status: number; data: unknown }) {
-    const msg = (r.data as { error?: unknown } | null)?.error;
-    if (r.status !== 402 || typeof msg !== 'string') return;
+  // Returns the refusal's code: "limit" (no room for a new page) or "anyone" (lists the plan doesn't allow).
+  refused(file: TFile, r: { status: number; data: unknown }): string | null {
+    const d = r.data as { error?: unknown; code?: unknown } | null,
+      msg = d?.error,
+      code = typeof d?.code === 'string' ? d.code : null;
+    if (r.status !== 402 || typeof msg !== 'string') return null;
     const k = `${file.path}\n${msg}`;
-    if (this.told.has(k)) return;
+    if (this.told.has(k)) return code;
     this.told.add(k);
     new WEB.Notice(
       createFragment((f) => {
         f.appendText(`MyOnePage: ${file.basename} was not published as it is. ${msg} `);
+        if (code === 'limit')
+          f.appendText('Its share: is now "waiting": it is published by itself once there is room. ');
+        if (code === 'anyone') f.appendText('The page keeps syncing with the lists it had. ');
         const a = f.createEl('a', { text: 'Sign in and see plans', href: '#' });
         a.onclick = (e) => {
           e.preventDefault();
@@ -555,6 +594,14 @@ export class WebSync {
       }),
       0,
     );
+    return code;
+  }
+
+  // A new page the server had no room for: its note gets share: waiting instead of a link that leads nowhere.
+  async wait(file: TFile, id: string) {
+    if (this.fresh === id) this.fresh = null;
+    const t = await this.app.vault.read(file);
+    await this.replace(file, t, t.replace(/^share:.*$/m, 'share: waiting'));
   }
 
   // Write a note only if it still holds what we read: a change typed meanwhile wins, and waits for the next round.

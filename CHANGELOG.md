@@ -5,6 +5,9 @@
 - Share with no setup: the first share makes an account on myone.page with a random token, no sign-up and no token
   to copy. The token now lives in the plugin's settings (moved from this device's local storage), so devices that
   sync the vault share it. The globe button opens a page signed in as its owner (a one-time link).
+- A note the free plan has no room for gets `share: waiting` (a clock on its share button) instead of a link that
+  leads nowhere, and is published by itself once there is room. `anyone` the plan doesn't allow is not resent every
+  round: the page keeps syncing with the lists the server has until you change them.
 - A note shared from another account is left alone (with a notice) instead of being moved to this one.
 - Settings: an Account row (who owns it, the plan, pages used; Sign in / See plans). Server and token moved under
   "Use another server or token"; an empty server means myone.page.

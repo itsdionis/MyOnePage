@@ -107,10 +107,19 @@ class MyOnePageView extends TextFileView {
   refreshShare() {
     if (!this.shareAction || !this.file) return;
     const s = this.plugin.shareState(this.file);
-    setIcon(this.shareAction, s === 'live' ? 'globe' : s === 'pending' ? 'loader' : 'share-2');
+    setIcon(
+      this.shareAction,
+      s === 'live' ? 'globe' : s === 'pending' ? 'loader' : s === 'waiting' ? 'clock' : 'share-2',
+    );
     this.shareAction.setAttribute(
       'aria-label',
-      s === 'live' ? 'Open on the web' : s === 'pending' ? 'Publishing…' : 'Share on the web',
+      s === 'live'
+        ? 'Open on the web'
+        : s === 'pending'
+          ? 'Publishing…'
+          : s === 'waiting'
+            ? 'Waiting for room to share: see plans'
+            : 'Share on the web',
     );
   }
   clear() {
@@ -202,7 +211,8 @@ class SharedPages extends Modal {
         text: String((fm.title as string | number | undefined) || f.basename),
       });
       const who = [...eds.map((e) => `✎ ${e}`), ...vws].join(' · ') || 'only you';
-      info.createDiv({ cls: 'myone-page-shared-who', text: live ? who : 'publishing…' });
+      const waits = /^waiting$/i.test(link);
+      info.createDiv({ cls: 'myone-page-shared-who', text: live ? who : waits ? 'waiting for room' : 'publishing…' });
       if ([...eds, ...vws].includes('anyone'))
         info.createSpan({ cls: 'myone-page-shared-open', text: 'anyone with the link' });
       const btns = row.createDiv('myone-page-shared-btns');
@@ -379,7 +389,9 @@ export default class MyOnePagePlugin extends Plugin {
 
   shareState(file: TFile) {
     const v = frontmatter(this.app, file).share;
-    return v == null ? 'none' : webLive(v) ? 'live' : 'pending';
+    if (v == null) return 'none';
+    if (webLive(v)) return 'live';
+    return typeof v === 'string' && /^waiting$/i.test(v.trim()) ? 'waiting' : 'pending';
   }
 
   // Shared: open the web copy. Not shared: add share: new and publish (only you can open it until
@@ -388,6 +400,8 @@ export default class MyOnePagePlugin extends Plugin {
     if (!file) return;
     const v = frontmatter(this.app, file).share;
     if (webLive(v)) return window.open(await this.web.ownerLink(String(v).trim()));
+    if (this.shareState(file) === 'waiting')
+      return window.open(await this.web.ownerLink(`${this.web.server}/settings`));
     if (!this.web.ready) {
       const err = await this.web.register();
       if (err) return new Notice(`MyOnePage: could not start sharing: ${err}`);
