@@ -48,6 +48,7 @@ interface Message {
 }
 export interface Prefs {
   server: string;
+  token: string; // the sharing server's token (see WebSync): in data.json, so it syncs with the vault
   every: number;
   htmlFolder: string;
 }
@@ -175,10 +176,14 @@ class SharedPages extends Modal {
     const { contentEl } = this,
       web = this.plugin.web;
     this.titleEl.setText('Shared on the web');
-    const site = web.server || 'https://myone.page';
+    const site = web.server;
     const top = contentEl.createDiv('myone-page-shared-site');
     top.createEl('a', { text: site.replace(/^https?:\/\//, ''), href: site });
-    if (web.server) top.createEl('a', { text: 'Settings', href: `${site}/settings` });
+    if (web.ready)
+      top.createEl('a', { text: 'Settings', href: '#' }).onclick = (e) => {
+        e.preventDefault();
+        void web.ownerLink(`${site}/settings`).then((u) => window.open(u));
+      };
     const rows = this.app.vault
       .getMarkdownFiles()
       .map((f): [TFile, Frontmatter] => [f, frontmatter(this.app, f)])
@@ -212,7 +217,7 @@ class SharedPages extends Modal {
       });
       if (live) {
         btn('copy', 'Copy link', () => void navigator.clipboard.writeText(link).then(() => new Notice('Link copied')));
-        btn('globe', 'Open in browser', () => window.open(link));
+        btn('globe', 'Open in browser', () => void web.ownerLink(link).then((u) => window.open(u)));
       }
     }
   }
@@ -222,7 +227,7 @@ class SharedPages extends Modal {
 }
 
 export default class MyOnePagePlugin extends Plugin {
-  prefs: Prefs = { server: '', every: 60, htmlFolder: '' };
+  prefs: Prefs = { server: '', token: '', every: 60, htmlFolder: '' };
   web!: WebSync;
   every = 0;
   markdownLeaves = new WeakMap<WorkspaceLeaf, string>(); // leaf -> path the user chose to read as Markdown
@@ -247,7 +252,7 @@ export default class MyOnePagePlugin extends Plugin {
       name: 'Share current note on the web',
       checkCallback: (checking) => {
         const file = this.app.workspace.getActiveFile();
-        if (!file || file.extension !== 'md' || !this.web.ready) return false;
+        if (!file || file.extension !== 'md') return false;
         if (!checking) void this.shareOrOpen(file);
         return true;
       },
@@ -276,7 +281,7 @@ export default class MyOnePagePlugin extends Plugin {
       id: 'web-sync',
       name: 'Sync shared pages now',
       callback: async () => {
-        if (!this.web.ready) return new Notice('MyOnePage: set the server and token in the plugin settings first');
+        if (!this.web.ready) return new Notice('MyOnePage: nothing is shared yet. Use the share button on a page.');
         await this.web.run(true);
         new Notice(`MyOnePage: ${this.web.status}`);
       },
@@ -382,8 +387,11 @@ export default class MyOnePagePlugin extends Plugin {
   async shareOrOpen(file: TFile | null) {
     if (!file) return;
     const v = frontmatter(this.app, file).share;
-    if (webLive(v)) return window.open(String(v).trim());
-    if (!this.web.ready) return new Notice('MyOnePage: set the server and token in the plugin settings first');
+    if (webLive(v)) return window.open(await this.web.ownerLink(String(v).trim()));
+    if (!this.web.ready) {
+      const err = await this.web.register();
+      if (err) return new Notice(`MyOnePage: could not start sharing: ${err}`);
+    }
     if (v == null)
       await this.app.vault.process(file, (text) =>
         webShare(text) != null

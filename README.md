@@ -71,23 +71,27 @@ Anything else is shown as plain text, exactly as written.
 
 ## Share on the web (optional)
 
-You can publish a page so that other people can read or edit it in a browser. This is off until you set it up.
-Everything above (pages, editing, HTML export, the Claude skill) is free and works without an account.
+You can publish a page so that other people can read or edit it in a browser. Nothing is sent anywhere until you
+click share. Everything above (pages, editing, HTML export, the Claude skill) is free and works without an account.
 
-- **An account is required to publish; payment for more than 3 pages.** Sharing needs an account on a sharing
-  server, such as [myone.page](https://myone.page) (sign-in with Google or an email link). There, 3 shared pages
+- **An account is required to publish (made for you); payment for more than 3 pages.** Sharing needs an account
+  on a sharing server, [myone.page](https://myone.page) unless you set another. The first time you click share, the
+  plugin makes a random token and registers it as a new account, with no sign-up. You sign in (Google or an email
+  link) only when you want to: the globe button on a shared page opens it signed in as its owner. 3 shared pages
   are free, shared with people who sign in. A paid plan adds unlimited pages and pages open to anyone with the link
   (founding price $1.99/month, normally $3.99; $19/year; $49 lifetime; 30-day refund). The people you share with
   sign in with Google or any email address, or not at all for a page open to anyone. The server is a separate service and is
   not part of this repository.
-- **Network use.** Once you enter a server and a token in the plugin settings, the plugin talks to that server and
+- **Network use.** From your first share (or once you enter a token), the plugin talks to the sharing server and
   nothing else. It sends only notes that have `share:` in their frontmatter, and syncs them both ways (every 60
   seconds by default, and a few seconds after you stop typing in a shared note). Notes without `share:` never leave
   your device.
 - **End-to-end encrypted.** A shared note is encrypted on your device (AES-GCM) before it is sent. The key is the
   part of the link after `#`, which browsers never send to the server, so the server stores only ciphertext. Besides
   that, it receives the `editors:` and `viewers:` lists, so it can check who may open the page.
-- The token is kept in this device's local storage, not in the vault, so it does not sync to other devices.
+- The token is kept in the plugin's settings (`.obsidian/plugins/myone-page/data.json`), so every device that syncs
+  the vault shares one account. The vault already holds each page's key (in its `share:` link); keep both out of a
+  public repository. A note shared from another account is left alone, never moved.
 
 To share a note, click the share button on the page (or run **Share current note on the web**). The plugin adds
 `share: new`, publishes the note, writes the link into `share:` and copies it. Add emails, `@domain`s or `anyone` to

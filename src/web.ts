@@ -58,7 +58,10 @@ const WEB_LINK = /^(https?:\/\/[^/\s]+)\/p\/([A-Za-z0-9_-]{16})\/([A-Za-z0-9]{22
 const WEB_KEYS = /^(share|editors|viewers):/;
 // per-device localStorage: {server, acct, pages: {id: {path, base, version, key, conflict?}}}; base is plaintext
 const WEB_STATE = 'myone-page-web';
-const WEB_TOKEN = 'myone-page-token'; // per device too: data.json syncs with the vault, a secret must not
+// Before 1.0.4 the token was kept per device; now it is in data.json, so every device that syncs the vault shares
+// one account (the vault already holds every page's key, in its share: links). Moved over once per device.
+const WEB_TOKEN = 'myone-page-token';
+const WEB_SERVER = 'https://myone.page'; // when the Server setting is empty
 // The keys before the rename; moved over once per device. Remove after every device has run a version with this.
 const WEB_OLD = { [WEB_STATE]: 'one-pager-web-2', [WEB_TOKEN]: 'one-pager-token' };
 
@@ -221,19 +224,73 @@ export class WebSync {
       if (v && !this.app.loadLocalStorage(key)) this.app.saveLocalStorage(key, v);
       if (v) this.app.saveLocalStorage(old, null);
     }
+    const local = this.app.loadLocalStorage(WEB_TOKEN) as string | null;
+    if (local) {
+      if (!plugin.prefs.token) {
+        plugin.prefs.token = local;
+        void plugin.saveSettings();
+      }
+      this.app.saveLocalStorage(WEB_TOKEN, null);
+    }
     this.running = false;
     this.timer = undefined;
     this.status = 'not connected';
     this.warned = new Set();
   }
   get server() {
-    return (this.plugin.prefs.server || '').trim().replace(/\/+$/, '');
+    return (this.plugin.prefs.server || WEB_SERVER).trim().replace(/\/+$/, '');
   }
   get token(): string {
-    return (this.app.loadLocalStorage(WEB_TOKEN) as string | null) || '';
+    return this.plugin.prefs.token || '';
   }
   set token(v: string) {
-    this.app.saveLocalStorage(WEB_TOKEN, v || null);
+    this.plugin.prefs.token = v;
+    void this.plugin.saveSettings();
+  }
+
+  // The first Share with no token: a random token of our own becomes a new account on the server, no sign-up.
+  // The owner signs in later, from the globe button (ownerLink). Returns an error to show, or null.
+  async register(): Promise<string | null> {
+    for (let i = 0; i < 2; i++) {
+      const b64 = (n: number) =>
+        btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(n))))
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=+$/, '');
+      const token = `${b64(12)}.${b64(32)}`; // <acct: 16>.<secret: 43>
+      const r = await WEB.requestUrl({
+        url: `${this.server}/api/owner/register`,
+        method: 'POST',
+        throw: false,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (r.status === 200) {
+        this.token = token;
+        return null;
+      }
+      if (r.status !== 409) {
+        let msg = `the server answered ${r.status}`;
+        try {
+          const e = (r.json as { error?: unknown } | null)?.error;
+          if (typeof e === 'string') msg = e;
+        } catch {
+          /* not JSON */
+        }
+        return msg;
+      }
+    }
+    return 'could not make an account, try again';
+  }
+
+  // A URL on the server that signs the visitor in as this account's owner (a one-time code the token asks for).
+  // Without one (no token, server down) the plain URL: a page link then asks the owner to sign in as anyone would.
+  async ownerLink(url: string) {
+    if (!this.ready) return url;
+    const r = await this.call('POST', '/api/owner/claim').catch(() => null);
+    const code = r && r.status === 200 ? (r.data as { code?: unknown } | null)?.code : null;
+    if (typeof code !== 'string') return url;
+    const [base, hash] = url.split('#');
+    return `${base}${base.includes('?') ? '&' : '?'}claim=${encodeURIComponent(code)}${hash != null ? '#' + hash : ''}`;
   }
   get ready() {
     return !!(this.server && this.token);
@@ -319,6 +376,17 @@ export class WebSync {
       const page = webResolve(share, this.server, acct);
       if (!page) {
         new WEB.Notice(`${file.path}: share: must be "new" or a myone.page link`);
+        continue;
+      }
+      const foreign = WEB_LINK.exec(share);
+      if (foreign && foreign[2] !== acct) {
+        // shared from another account (another vault's token, or a device that made its own): never move it
+        if (!this.warned.has(file.path))
+          new WEB.Notice(
+            `MyOnePage: ${file.basename} is shared from another account, so this device leaves it alone. ` +
+              'Set share: new to share it from this one (a new link).',
+          );
+        this.warned.add(file.path);
         continue;
       }
       if (page.link !== share) {
@@ -468,7 +536,17 @@ export class WebSync {
     const k = `${file.path}\n${msg}`;
     if (this.told.has(k)) return;
     this.told.add(k);
-    new WEB.Notice(`MyOnePage: ${file.basename} was not published as it is. ${msg}`, 0);
+    new WEB.Notice(
+      createFragment((f) => {
+        f.appendText(`MyOnePage: ${file.basename} was not published as it is. ${msg} `);
+        const a = f.createEl('a', { text: 'Sign in and see plans', href: '#' });
+        a.onclick = (e) => {
+          e.preventDefault();
+          void this.ownerLink(`${this.server}/settings`).then((u) => window.open(u));
+        };
+      }),
+      0,
+    );
   }
 
   // Write a note only if it still holds what we read: a change typed meanwhile wins, and waits for the next round.
@@ -512,15 +590,18 @@ export class WebSettings extends WEB.PluginSettingTab {
         'emails, @domains, or anyone (whoever has the link). share: then holds the link, which is copied when the page is published. ' +
         'The note is encrypted on this device and the key is the part of the link after #, so the server cannot read it: ' +
         'whoever has the full link and is allowed in can. To cut off an anyone page, set share: new (a new link). ' +
-        'This needs an account on a sharing server such as myone.page (free for 3 pages shared with people who sign in; ' +
-        'a paid plan for more pages and for anyone links). Notes go only to the server set here, and only notes with share:.',
+        'The share button does all of it. Its first use makes an account on the server (myone.page unless set below) ' +
+        "with a random token kept in this plugin's settings, with no sign-up: 3 pages free, shared with people who sign in; " +
+        'a paid plan for more pages and for anyone links. The globe button on a shared page signs you in as its owner. ' +
+        'Nothing is sent before the first share, and only notes with share:, only to this server.',
     });
     new WEB.Setting(el)
       .setName('Server')
       .setDesc(
         createFragment((f) => {
-          f.appendText('For example ');
+          f.appendText('Empty: ');
           f.createEl('a', { text: 'https://myone.page', href: 'https://myone.page' });
+          f.appendText('. Another server needs a token from its settings page.');
         }),
       )
       .addText((t) =>
@@ -537,9 +618,14 @@ export class WebSettings extends WEB.PluginSettingTab {
       .setDesc(
         createFragment((f) => {
           f.appendText(
-            "From the server's settings page, signed in with an account allowed to publish. Kept on this device only. ",
+            "Made by the first share, or pasted from the server's settings page. Kept in this plugin's settings, " +
+              'so every device that syncs the vault uses the same account: keep it out of a public repository. ',
           );
-          f.createEl('a', { text: 'Open settings page', href: `${sync.server || 'https://myone.page'}/settings` });
+          const a = f.createEl('a', { text: 'Open settings page', href: '#' });
+          a.onclick = (e) => {
+            e.preventDefault();
+            void sync.ownerLink(`${sync.server}/settings`).then((u) => window.open(u));
+          };
         }),
       )
       .addText((t) => {

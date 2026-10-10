@@ -2,6 +2,12 @@
 
 ## 1.0.4 (unreleased)
 
+- Share with no setup: the first share makes an account on myone.page with a random token, no sign-up and no token
+  to copy. The token now lives in the plugin's settings (moved from this device's local storage), so devices that
+  sync the vault share it. The globe button opens a page signed in as its owner (a one-time link).
+- A note shared from another account is left alone (with a notice) instead of being moved to this one.
+- Server: empty means myone.page.
+
 - Sharing: when the server refuses a page (on myone.page: more than 3 shared pages, or `anyone`, on the free plan),
   the plugin says why in a notice, once per note, instead of skipping the page silently.
 - Settings: the token's **Open settings page** link works before a server is entered (it opens myone.page).
