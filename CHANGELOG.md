@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.4 (unreleased)
+## 1.0.4
 
 - Share with no setup: the first share makes an account on myone.page with a random token, no sign-up and no token
   to copy. The token now lives in the plugin's settings (moved from this device's local storage), so devices that
