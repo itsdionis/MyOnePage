@@ -11,6 +11,7 @@ document.body.insertAdjacentHTML(
 <div id="bar">
   <span id="st">loading</span>
   <button id="rest" title="this browser has edits that are not in the file" hidden>⟲ browser edits</button>
+  <button id="probs" hidden>⚠</button>
   <button id="undo" title="Cmd+Z">↶</button>
   <button id="edit" title="click any text for a quick edit; this is full editing: drag, add and delete blocks">✎ edit</button>
   <button id="dl" title="download the page as Markdown">MD</button>
@@ -34,6 +35,8 @@ const ENGINE_JS = document.currentScript.src,
 // ETAG: the version the page was loaded at, when the server sends one; a save then sends If-Match
 // and the server refuses it (409) if someone saved in between. RO: read only (a shared file, a viewer).
 let DOC = null,
+  FLAGS = new WeakMap(), // block -> what md.js could not read in it (shown while editing); PAGE_FLAGS: the rest
+  PAGE_FLAGS = [],
   DIRTY = false,
   MODE = 'server',
   BASE = null,
@@ -219,6 +222,7 @@ const isoToday = () => {
 function render() {
   const root = document.getElementById('app');
   root.replaceChildren();
+  if (PAGE_FLAGS.length && !RO) root.appendChild($('div', 'flag', '⚠ ' + PAGE_FLAGS.join('\n⚠ ')));
   const h = DOC.hero;
   const h1 = $('h1');
   h.lines.forEach((ln, i) => {
@@ -242,6 +246,11 @@ function render() {
     sec.dataset.bi = bi;
     sec.dataset.axis = AXIS[b.type] || 'vert';
     root.appendChild(sec);
+    const fl = !RO && FLAGS.get(b);
+    if (fl) {
+      sec.classList.add('flagged');
+      sec.appendChild($('div', 'flag', '⚠ ' + fl.join('\n⚠ ')));
+    }
     const app = { appendChild: (n) => sec.appendChild(n) };
     if (b.type === 'h2') {
       const e = ed($('h2'), P + '.text');
@@ -453,7 +462,20 @@ function render() {
   buildPalette();
   applyEditable();
   nav();
+  probs();
 }
+// ⚠ in the bar: how many places md.js flagged, for the owner; a click opens editing at the first one.
+function probs() {
+  const b = document.getElementById('probs'),
+    n = document.querySelectorAll('#app .flag').length;
+  b.hidden = RO || !n;
+  b.textContent = `⚠ ${n}`;
+  b.title = `${n} place${n > 1 ? 's' : ''} in the Markdown ${n > 1 ? 'look' : 'looks'} wrong: click to see ${n > 1 ? 'them' : 'it'}`;
+}
+document.getElementById('probs').onclick = () => {
+  if (!isEdit()) document.getElementById('edit').click();
+  document.querySelector('#app .flag')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+};
 
 // Gantt: task names on the left, bars on a shared time axis. Dates come from md.js schedule();
 // names and sections are edited here, dates in the file.
@@ -1306,15 +1328,13 @@ async function load() {
     try {
       BASE = await fromWire(wire);
     } catch (e) {
-      RO = true;
-      status(e.message);
-      document.querySelectorAll('#bar button').forEach((b) => (b.hidden = true));
-      const m = $('p', '', e.message);
-      m.style.cssText = 'margin:20vh 0;font-size:18px';
-      document.getElementById('app').replaceChildren(m);
-      return false;
+      return stop(e.message);
     }
-    DOC = MD.parse(BASE).doc;
+    try {
+      DOC = flag(MD.parse(BASE));
+    } catch (e) {
+      return stop(`This page could not be read (${e.message}). The file is unchanged.`);
+    }
     MODE = 'server';
     status('ready');
     let ls = null;
@@ -1356,7 +1376,42 @@ async function load() {
     }
   }
   applyMeta();
-  render();
+  try {
+    render();
+  } catch (e) {
+    return stop(`This page could not be shown (${e.message}). The file is unchanged: open it as Markdown to fix it.`);
+  }
+}
+// Nothing to show: say why, and no editing (a save would write what was not read).
+function stop(msg) {
+  RO = true;
+  status(msg);
+  document.querySelectorAll('#bar button').forEach((b) => (b.hidden = true));
+  const m = $('p', '', msg);
+  m.style.cssText = 'margin:20vh 0;font-size:18px';
+  document.getElementById('app').replaceChildren(m);
+  return false;
+}
+// What md.js could not read, or reads as a likely mistake in a block (errors and warnings, not the info lines; a
+// missing title or date is check.mjs's business, a note does without), by block: the owner sees them while editing,
+// and ⚠ in the bar counts them. Returns the doc.
+function flag({ doc, issues, at }) {
+  FLAGS = new WeakMap();
+  PAGE_FLAGS = [];
+  const blk = (line) => {
+    let k = at.length - 1;
+    while (k >= 0 && at[k] > line) k--;
+    return k;
+  };
+  const all = [...issues, ...MD.check(doc, at).filter((i) => blk(i.line) >= 0)];
+  for (const i of all) {
+    if (i.level === 'info') continue;
+    const k = blk(i.line),
+      msg = `line ${i.line}: ${i.msg}`;
+    if (k < 0) PAGE_FLAGS.push(msg);
+    else FLAGS.set(doc.blocks[k], [...(FLAGS.get(doc.blocks[k]) || []), msg]);
+  }
+  return doc;
 }
 
 document.getElementById('edit').onclick = (e) => {

@@ -4,7 +4,11 @@
 //   node skill.mjs                 copy check.mjs, engine/md.js, examples/one-pager.md and templates/ into the folder
 //   node skill.mjs --zip <out>     also write the zip for the Claude app: myone-page/ with those files, SKILL.md
 //                                  stamped with the version in manifest.json
-//   node skill.mjs --check [--zip <out>]   change nothing; fail if a copy (or that zip) is out of date (pnpm verify)
+//   node skill.mjs --checker <dir> also write <dir>/<first 16 hex of its SHA-256>.mjs, the check.mjs the plugin's Set up
+//                                  downloads (the plugin carries only the hash); older ones stay for older plugins
+//   node skill.mjs --check [--zip <out>] [--checker <dir>]   change nothing; fail if a copy (or that zip, or that
+//                                  checker) is out of date (pnpm verify)
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,8 +26,10 @@ const SKT = 'skills/myone-page/templates';
 
 const args = process.argv.slice(2),
   check = args.includes('--check'),
-  out = args.includes('--zip') ? args[args.indexOf('--zip') + 1] : null;
+  out = args.includes('--zip') ? args[args.indexOf('--zip') + 1] : null,
+  checker = args.includes('--checker') ? args[args.indexOf('--checker') + 1] : null;
 if (args.includes('--zip') && !out) throw new Error('--zip needs an output path');
+if (args.includes('--checker') && !checker) throw new Error('--checker needs a folder');
 
 const stale = [];
 if (!check) mkdirSync(join(HERE, SKT), { recursive: true });
@@ -50,8 +56,15 @@ if (out) {
   else if (!existsSync(out) || !readFileSync(out).equals(bytes))
     stale.push(`${out} is not the zip of skills/myone-page`);
 }
+if (checker) {
+  const text = read('check.mjs'),
+    to = join(checker, `${createHash('sha256').update(text).digest('hex').slice(0, 16)}.mjs`);
+  if (!check) (mkdirSync(checker, { recursive: true }), writeFileSync(to, text), console.log(`skill: ${to}`));
+  else if (!existsSync(to) || readFileSync(to, 'utf8') !== text) stale.push(`${to} is not check.mjs`);
+}
 if (stale.length) {
-  for (const s of stale) console.error(`skill: ${s}; run node skill.mjs${out ? ' --zip ' + out : ''}`);
+  const again = `${out ? ' --zip ' + out : ''}${checker ? ' --checker ' + checker : ''}`;
+  for (const s of stale) console.error(`skill: ${s}; run node skill.mjs${again}`);
   process.exit(1);
 }
 if (check) console.log('skill: up to date');

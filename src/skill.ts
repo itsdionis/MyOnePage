@@ -4,16 +4,20 @@
 // file the plugin wrote is unchanged (their hashes are kept in the plugin's data); an edited copy is left alone.
 // Desktop only. The settings also point to the Claude app's zip.
 // These are dot folders, which the Vault API doesn't index, so the files go through vault.adapter.
-import { Platform, Setting } from 'obsidian';
+// check.mjs reads and writes files with Node's fs, so the plugin doesn't carry its text: it downloads it from the
+// sharing server (/web/check/<hash>.mjs, which `pnpm skill` writes) and keeps it only if its SHA-256 is the one
+// built in here. The plugin never runs it.
+import { Notice, Platform, Setting, requestUrl } from 'obsidian';
 import type MyOnePagePlugin from './main';
 import { TEMPLATES } from './templates';
 import SKILL from '../skills/myone-page/SKILL.md?text';
-import CHECK from '../check.mjs?text';
+import CHECK_SHA256 from '../check.mjs?sha256';
 import MDJS from '../engine/md.js?text';
 import EXAMPLE from '../examples/one-pager.md?text';
 
 const GUIDE = 'https://myone.page/ai'; // the Claude app: the zip and how to upload it
 const DIRS = ['.claude/skills/myone-page', '.agents/skills/myone-page'];
+const CHECK = 'check.mjs';
 type State = 'none' | 'current' | 'old' | 'edited';
 export interface SkillPrefs {
   files: Record<string, string>; // name -> hash of each file last written, to tell our copy from an edited one
@@ -26,9 +30,9 @@ function stamp(text: string, version: string) {
   const fm = text.slice(0, end).replace(/\nmetadata:\n(?: +.*\n?)*/, '\n');
   return `${fm.replace(/\n*$/, '')}\nmetadata:\n  version: '${version}'${text.slice(end)}`;
 }
+// The files the plugin carries; check.mjs comes from checker().
 const files = (version: string): Record<string, string> => ({
   'SKILL.md': stamp(SKILL, version),
-  'check.mjs': CHECK,
   'md.js': MDJS,
   'example.md': EXAMPLE,
   ...Object.fromEntries(TEMPLATES.map((t) => [`templates/${t.slug}.md`, t.text])),
@@ -38,6 +42,11 @@ function hash(text: string) {
   let h = 0x811c9dc5;
   for (const c of text) h = Math.imul(h ^ c.charCodeAt(0), 0x01000193) >>> 0;
   return h.toString(16);
+}
+async function sha256(data: string | ArrayBuffer) {
+  const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+  const d = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+  return Array.from(d, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 export class SkillInstall {
@@ -58,13 +67,29 @@ export class SkillInstall {
     if (!(await this.adapter.exists(`${dir}/SKILL.md`))) return 'none';
     const read = (n: string) => this.adapter.read(`${dir}/${n}`).catch(() => null);
     const now = Object.entries(files(this.version));
-    if ((await Promise.all(now.map(async ([n, text]) => (await read(n)) === text))).every(Boolean)) return 'current';
+    const same = await Promise.all(now.map(async ([n, text]) => (await read(n)) === text));
+    if (same.every(Boolean) && (await sha256((await read(CHECK)) ?? '')) === CHECK_SHA256) return 'current';
     const wrote = Object.entries(this.plugin.prefs.skill?.files ?? {});
-    const same = await Promise.all(wrote.map(async ([n, h]) => hash((await read(n)) ?? '') === h));
-    return wrote.length && same.every(Boolean) ? 'old' : 'edited';
+    const ours = await Promise.all(wrote.map(async ([n, h]) => hash((await read(n)) ?? '') === h));
+    return wrote.length && ours.every(Boolean) ? 'old' : 'edited';
+  }
+  // check.mjs: a copy already in the vault, if it is this version's, or else a download.
+  async checker() {
+    for (const dir of DIRS) {
+      const text = await this.adapter.read(`${dir}/${CHECK}`).catch(() => null);
+      if (text !== null && (await sha256(text)) === CHECK_SHA256) return text;
+    }
+    const r = await requestUrl({
+      url: `${this.plugin.web.server}/web/check/${CHECK_SHA256.slice(0, 16)}.mjs`,
+      throw: false,
+    });
+    if (r.status !== 200) throw new Error(`the server answered ${r.status} for the checker (check.mjs)`);
+    if ((await sha256(r.arrayBuffer)) !== CHECK_SHA256)
+      throw new Error('the checker (check.mjs) from the server is not the one this plugin version expects');
+    return r.text;
   }
   async write(dir: string) {
-    const now = files(this.version);
+    const now = { ...files(this.version), [CHECK]: await this.checker() };
     for (const d of [dir, `${dir}/templates`]) {
       let at = '';
       for (const part of d.split('/')) {
@@ -88,9 +113,14 @@ export class SkillInstall {
   }
   // After a plugin update: refresh the copies the plugin wrote and nobody edited, and add a folder an older version
   // didn't write (once set up, every agent's folder has it).
+  // Offline, it tries again on the next start.
   async refresh() {
     if (Platform.isMobile || !this.plugin.prefs.skill) return;
-    for (const dir of await this.dirs()) if (['old', 'none'].includes(await this.state(dir))) await this.write(dir);
+    try {
+      for (const dir of await this.dirs()) if (['old', 'none'].includes(await this.state(dir))) await this.write(dir);
+    } catch (e) {
+      console.warn('[myone.page] skill update:', e);
+    }
   }
 }
 
@@ -121,7 +151,11 @@ export function skillSettings(el: HTMLElement, plugin: MyOnePagePlugin) {
     const act = (label: string, force: boolean) =>
       row.addButton((b) => {
         b.setButtonText(label).onClick(async () => {
-          await sk.install(force);
+          try {
+            await sk.install(force);
+          } catch (e) {
+            new Notice(`MyOnePage: could not set up the skill: ${e instanceof Error ? e.message : String(e)}`);
+          }
           await paint();
         });
         if (!force) b.setCta();

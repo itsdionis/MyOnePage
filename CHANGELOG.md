@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.6 (unreleased)
+
+- **Set up** for coding agents downloads the page checker (`check.mjs`) from myone.page instead of carrying it inside
+  the plugin, and keeps it only if it is exactly the file this version expects. It needs a connection the first time;
+  if it fails, a notice says so and nothing is written. The plugin itself no longer contains any code that reads or
+  writes files directly.
+- Mistakes in a page's Markdown are shown: while editing, a note above a block says what is wrong with it and on which
+  line (a callout with a stray line, a code block left open, an unknown option), and **⚠ N** in the bar counts them
+  and takes you to the first. Readers never see them.
+- Saving no longer loses what the page couldn't read: a second `title:`, a `[?]` a block has no use for, or an unknown
+  table option stays in the note as written (they used to disappear on the first edit).
+- A code block left open (a stray ` ``` `) turns only the rest of its part into plain text, not the rest of the page.
+- A page with a frontmatter missing its closing `---` gets it closed on save, instead of a second frontmatter on top.
+- A numbered list with a pasted line separator in it no longer leaves the page blank. A page that can't be shown says
+  so, instead of an empty page that reads "ready"; **Make a page with AI** says when it fails instead of doing nothing.
+
 ## 1.0.5
 
 - Releases carry only the plugin's files (`main.js`, `manifest.json`, `styles.css`). The skill for the Claude app is

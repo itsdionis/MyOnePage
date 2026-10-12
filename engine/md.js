@@ -132,17 +132,27 @@ var MD = (function () {
     };
 
     if (L[0] === '---') {
-      const end = L.indexOf('---', 1);
-      if (end < 0) note(1, 'error', 'frontmatter is not closed with ---');
-      else {
+      let end = L.indexOf('---', 1),
+        to = end + 1;
+      if (end < 0) {
+        // not closed: if it is only keys (and their indented or "- " lines) up to a blank line, it ends there
+        let e = 1;
+        while (e < L.length && /^([\w-]+:|\s+\S|- )/.test(L[e])) e++;
+        if (e > 1 && (e === L.length || blank(L[e]))) {
+          note(1, 'error', `frontmatter is not closed with ---; it ends at line ${e}`);
+          end = to = e;
+        } else note(1, 'error', 'frontmatter is not closed with ---');
+      }
+      if (end > 0) {
         const extra = [];
         for (let j = 1; j < end; j++) {
           const m = /^(title|updated|lang|view):(?:\s+(.*))?$/.exec(L[j]);
-          if (m && !(j + 1 < end && /^\s/.test(L[j + 1]))) doc.meta[m[1]] = yamlIn(m[2] || '');
+          if (m && m[1] in doc.meta) note(j + 1, 'warn', `${m[1]}: is set twice; the first one counts`);
+          if (m && !(m[1] in doc.meta) && !(j + 1 < end && /^\s/.test(L[j + 1]))) doc.meta[m[1]] = yamlIn(m[2] || '');
           else extra.push(L[j]);
         }
         if (extra.length) doc.fm = extra.join('\n');
-        i = end + 1;
+        i = to;
       }
     } else note(1, 'error', 'no frontmatter: start with --- title / updated --- ');
 
@@ -177,107 +187,131 @@ var MD = (function () {
       }
     } else note(i + 1, 'warn', 'no hero: the page should start with a "# " line');
 
-    while (i < L.length) {
-      const s = L[i],
-        ln = i + 1;
-      if (blank(s)) {
-        i++;
-        continue;
-      }
-      start = ln;
-
-      if (/^##(?: |$)/.test(s)) {
-        const t = s.slice(2).trim();
-        let num = '',
-          ttl = t;
-        if (t.startsWith('· ')) ttl = t.slice(2);
-        else {
-          const k = t.indexOf(SEP);
-          if (k >= 0) {
-            num = t.slice(0, k);
-            ttl = t.slice(k + SEP.length);
-          }
-        }
-        i++;
-        let nt = '';
-        if (i < L.length && !blank(L[i]) && !startsBlock(L[i]) && !isOl(L[i])) nt = L[i++].trim();
-        add({ type: 'part', num, ttl, note: nt });
-        continue;
-      }
-      if (/^###(?: |$)/.test(s)) {
-        add({ type: 'h2', text: s.slice(3).trim() });
-        i++;
-        continue;
-      }
-      if (isHead(s)) {
-        p(i, i + 1, 'only "## " (part) and "### " (heading) are blocks');
-        i++;
-        continue;
-      }
-
-      if (isFence(s)) {
-        const f = /^ {0,3}(`{3,}|~{3,})/.exec(s)[1],
-          info = s.trim().slice(f.length).trim();
-        let e = i + 1;
-        while (e < L.length && !L[e].trimStart().startsWith(f)) e++;
-        const b = info === 'mermaid' && e < L.length ? gantt(L.slice(i + 1, e), ln, note) : null;
-        if (b) add(b);
-        else p(i, Math.min(e + 1, L.length));
-        i = e + 1;
-        continue;
-      }
-
-      if (isQuote(s)) {
-        let e = i;
-        while (e < L.length && isQuote(L[e])) e++;
-        const b = callout(
-          L.slice(i, e).map((x) => x.replace(/^ {0,3}> ?/, '')),
-          ln,
-          note,
-        );
-        if (b) add(b);
-        else p(i, e);
-        i = e;
-        continue;
-      }
-
-      if (isTableOpt(s) || isTable(s)) {
-        let e = isTableOpt(s) ? i + 1 : i;
-        while (e < L.length && isTable(L[e])) e++;
-        const b = table(L.slice(i, e), ln, note);
-        if (b) add(b);
-        else p(i, e, 'not a table: needs a header row and a | --- | row');
-        i = e;
-        continue;
-      }
-
-      if (isOl(s)) {
-        const items = [];
-        let e = i;
-        for (; e < L.length && !blank(L[e]) && !(e > i && startsBlock(L[e])); e++) {
-          const m = /^\d{1,9}[.)](?: (.*))?$/.exec(L[e]);
-          if (m) {
-            items.push(splitBold(m[1] || ''));
+    // A block reader that fails must not lose the page: that block's lines stay as plain text, and reading goes on.
+    let nb = 0; // blocks before the one being read
+    for (;;) {
+      try {
+        while (i < L.length) {
+          const s = L[i],
+            ln = i + 1;
+          if (blank(s)) {
+            i++;
             continue;
           }
-          const last = items[items.length - 1];
-          last.s += (last.s ? '\n' : '') + L[e].trim();
-        }
-        add({ type: 'ol', items });
-        i = e;
-        continue;
-      }
+          start = ln;
+          nb = at.length;
 
-      const e = paraEnd(i),
-        text = L.slice(i, e).join('\n');
-      const r = /^\*\*((?:[^*\\]|\\.|\*(?!\*))+?)\*\*(?:[ \t]+([\s\S]*)|\n([\s\S]*))?$/.exec(text);
-      if (r) add({ type: 'rule', lead: r[1], text: r[2] ?? r[3] ?? '' });
-      else {
-        p(i, e);
-        if (/^[-*+] /.test(s))
-          note(ln, 'info', 'a bullet list outside a callout is plain text; for cards use > [!cards]');
+          if (/^##(?: |$)/.test(s)) {
+            const t = s.slice(2).trim();
+            let num = '',
+              ttl = t;
+            if (t.startsWith('· ')) ttl = t.slice(2);
+            else {
+              const k = t.indexOf(SEP);
+              if (k >= 0) {
+                num = t.slice(0, k);
+                ttl = t.slice(k + SEP.length);
+              }
+            }
+            i++;
+            let nt = '';
+            if (i < L.length && !blank(L[i]) && !startsBlock(L[i]) && !isOl(L[i])) nt = L[i++].trim();
+            add({ type: 'part', num, ttl, note: nt });
+            continue;
+          }
+          if (/^###(?: |$)/.test(s)) {
+            add({ type: 'h2', text: s.slice(3).trim() });
+            i++;
+            continue;
+          }
+          if (isHead(s)) {
+            p(i, i + 1, 'only "## " (part) and "### " (heading) are blocks');
+            i++;
+            continue;
+          }
+
+          if (isFence(s)) {
+            const f = /^ {0,3}(`{3,}|~{3,})/.exec(s)[1],
+              info = s.trim().slice(f.length).trim();
+            let e = i + 1;
+            while (e < L.length && !L[e].trimStart().startsWith(f)) e++;
+            if (e === L.length) {
+              // not closed: it runs to the next part, not to the end of the page
+              let k = i + 1;
+              while (k < L.length && !/^##(?: |$)/.test(L[k])) k++;
+              while (k > i + 1 && blank(L[k - 1])) k--;
+              p(i, k, `code block not closed with ${f}`);
+              i = k;
+              continue;
+            }
+            const b = info === 'mermaid' ? gantt(L.slice(i + 1, e), ln, note) : null;
+            if (b) add(b);
+            else p(i, Math.min(e + 1, L.length));
+            i = e + 1;
+            continue;
+          }
+
+          if (isQuote(s)) {
+            let e = i;
+            while (e < L.length && isQuote(L[e])) e++;
+            const b = callout(
+              L.slice(i, e).map((x) => x.replace(/^ {0,3}> ?/, '')),
+              ln,
+              note,
+            );
+            if (b) add(b);
+            else p(i, e);
+            i = e;
+            continue;
+          }
+
+          if (isTableOpt(s) || isTable(s)) {
+            let e = isTableOpt(s) ? i + 1 : i;
+            while (e < L.length && isTable(L[e])) e++;
+            const b = table(L.slice(i, e), ln, note);
+            if (b) add(b);
+            else p(i, e, 'not a table: needs a header row and a | --- | row');
+            i = e;
+            continue;
+          }
+
+          if (isOl(s)) {
+            const items = [];
+            let e = i;
+            for (; e < L.length && !blank(L[e]) && !(e > i && startsBlock(L[e])); e++) {
+              const m = /^\d{1,9}[.)](?: ([\s\S]*))?$/.exec(L[e]);
+              if (m) {
+                items.push(splitBold(m[1] || ''));
+                continue;
+              }
+              const last = items[items.length - 1];
+              last.s += (last.s ? '\n' : '') + L[e].trim();
+            }
+            add({ type: 'ol', items });
+            i = e;
+            continue;
+          }
+
+          const e = paraEnd(i),
+            text = L.slice(i, e).join('\n');
+          const r = /^\*\*((?:[^*\\]|\\.|\*(?!\*))+?)\*\*(?:[ \t]+([\s\S]*)|\n([\s\S]*))?$/.exec(text);
+          if (r) add({ type: 'rule', lead: r[1], text: r[2] ?? r[3] ?? '' });
+          else {
+            p(i, e);
+            if (/^[-*+] /.test(s))
+              note(ln, 'info', 'a bullet list outside a callout is plain text; for cards use > [!cards]');
+          }
+          i = e;
+        }
+        break;
+      } catch (err) {
+        doc.blocks.length = at.length = nb;
+        let e = start;
+        while (e < L.length && !blank(L[e])) e++;
+        p(start - 1, e);
+        note(start, 'error', `could not read this block (${err && err.message}); kept as plain text`);
+        i = e;
       }
-      i = e;
     }
     return { doc, issues, at };
   }
@@ -329,6 +363,16 @@ var MD = (function () {
       note(ln, 'warn', `[!${type}]: ${why}; kept as plain text`);
       return null;
     };
+    // a "[?]" the block has no use for stays in the item's text
+    const marks = (items, flags) => {
+      for (const it of items || [])
+        if (it.mark && !flags.includes(it.mark)) {
+          note(ln, 'warn', `[!${type}]: "[${it.mark}]" means nothing here; kept as text`);
+          it.text = `[${it.mark}]${it.text ? ' ' + it.text : ''}`;
+          it.mark = '';
+        }
+      return items;
+    };
 
     if (type === 'lineage') {
       while (rest.length && blank(rest[rest.length - 1])) rest.pop();
@@ -343,7 +387,7 @@ var MD = (function () {
       if (type === 'cmdcols') {
         const cols = [];
         for (const g of gs) {
-          const items = list(g.body);
+          const items = marks(list(g.body), 'x');
           if (!items) return fail(`"${g.head}": only "- " lines go under a column`);
           const m = /^(.*?)[ \t]*(\[(?:[^\]\\]|\\.)*\]\([^\n]*\))$/.exec(g.head),
             lk = m && wholeLink(m[2]);
@@ -366,8 +410,8 @@ var MD = (function () {
         const m = /^(?:(.*?) · )?(.*?)\s*%%\s*([a-z])\s*%%$/.exec(g.head);
         if (!m) return fail(`"${g.head}": a cell heading is "#### N · Title %%slot%%"`);
         const st = g.body.findIndex((x) => /^##### ?/.test(x));
-        const items = list(st < 0 ? g.body : g.body.slice(0, st)),
-          sub = st < 0 ? [] : list(g.body.slice(st + 1));
+        const items = marks(list(st < 0 ? g.body : g.body.slice(0, st)), ''),
+          sub = st < 0 ? [] : marks(list(g.body.slice(st + 1)), '');
         if (!items || !sub) return fail(`"${m[2]}": only "- " lines go in a cell`);
         const line = (it) => [it.text, ...it.cont].join('\n');
         const c = { k: m[3], n: m[1] || '', t: m[2], items: items.map(line) };
@@ -380,12 +424,8 @@ var MD = (function () {
       return { type, cells };
     }
 
-    const items = list(rest);
+    const items = marks(list(rest), { stats: 'x!', flow: 'x' }[type] || '');
     if (!items) return fail('only "- " lines go inside');
-    const flags = { stats: 'x!', flow: 'x' }[type] || '';
-    for (const it of items)
-      if (it.mark && !flags.includes(it.mark))
-        note(ln, 'warn', `[!${type}]: "[${it.mark}]" means nothing here, dropped`);
     if (type === 'flow')
       return {
         type,
@@ -551,19 +591,21 @@ var MD = (function () {
         .shift()
         .replace(/^%%\s*table\b/, '')
         .replace(/%%\s*$/, '');
-      for (const m of o.matchAll(/(\w+)=("[^"]*"|\S+)/g)) {
-        const k = m[1],
-          v = m[2][0] === '"' ? m[2].slice(1, -1) : m[2];
+      // what it can't read stays in the line as written (b.other)
+      const other = o.replace(/(\w+)=("[^"]*"|\S+)/g, (all, k, raw) => {
+        const v = raw[0] === '"' ? raw.slice(1, -1) : raw;
         if (!TABLE_OPTS.includes(k)) {
-          note(ln, 'warn', `table: unknown option ${k}, dropped`);
-          continue;
+          note(ln, 'warn', `table: unknown option ${k}; kept as written`);
+          return all;
+        }
+        if (k !== 'cols' && !Number.isInteger(+v)) {
+          note(ln, 'error', `table: ${k} must be a column number`);
+          return all;
         }
         b[k] = k === 'cols' ? v : +v;
-        if (k !== 'cols' && !Number.isInteger(b[k])) {
-          note(ln, 'error', `table: ${k} must be a column number`);
-          delete b[k];
-        }
-      }
+        return '';
+      });
+      if (other.trim()) b.other = other.trim().replace(/\s+/g, ' ');
     }
     if (rows.length < 2 || !/^[\s|:-]+$/.test(rows[1]) || !rows[1].includes('-')) return null;
     b.head = cells(rows[0]);
@@ -679,6 +721,7 @@ var MD = (function () {
           const opts = TABLE_OPTS.filter((k) => b[k] != null && !(k === 'accentCol' && b[k] === -1)).map(
             (k) => `${k}=${k === 'cols' && /\s/.test(b[k]) ? `"${b[k]}"` : b[k]}`,
           );
+          if (b.other) opts.push(b.other);
           if (opts.length) o.push(`%% table ${opts.join(' ')} %%`);
           const n = b.head.length,
             cell = (s) => one(s).replace(/\|/g, '\\|');

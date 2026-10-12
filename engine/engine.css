@@ -994,6 +994,31 @@ body.edit #palette {
 #st {
   min-width: 74px;
 }
+#bar #probs {
+  color: var(--warm);
+  border-color: var(--warm-line);
+}
+/* what md.js could not read, or reads as a likely mistake: shown while editing (engine.js flag()) */
+.flag {
+  display: none;
+}
+body.edit .flag {
+  display: block;
+  white-space: pre-wrap;
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  border-left: 2px solid var(--warm);
+  border-radius: 0 6px 6px 0;
+  background: var(--warm-soft);
+  color: var(--warm);
+  font-size: 12px;
+  line-height: 1.45;
+}
+body.edit .blk.flagged {
+  outline: 1px dashed var(--warm-line);
+  outline-offset: 6px;
+  border-radius: 4px;
+}
 body.edit [data-p] {
   outline: 1px dashed rgba(152, 161, 179, 0.35);
   outline-offset: 3px;
@@ -1026,7 +1051,8 @@ body.file #bar {
   display: none;
 }
 @media print {
-  #bar {
+  #bar,
+  .flag {
     display: none;
   }
 }

@@ -3,6 +3,11 @@ declare module '*?text' {
   const text: string;
   export default text;
 }
+// and `?sha256` the file's SHA-256, in hex
+declare module '*?sha256' {
+  const hex: string;
+  export default hex;
+}
 
 // engine/seal.js, a classic script, sets window.SEAL.
 interface Seal {

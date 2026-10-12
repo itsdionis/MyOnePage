@@ -153,13 +153,14 @@ click share. Everything above (pages, editing, HTML export, writing pages with A
 - **Network use.** From your first share (or once you enter a token), the plugin talks to the sharing server and
   nothing else. It sends only notes that have `share:` in their frontmatter, and syncs them both ways (every 60
   seconds by default, and a few seconds after you stop typing in a shared note). Notes without `share:` never leave
-  your device.
+  your device. The one other request: **Set up** under **Coding agents** downloads `check.mjs` (the page checker)
+  from the same server, and keeps it only if its SHA-256 matches the one built into the plugin.
 - **Files and clipboard.** The plugin reads and writes your notes only through Obsidian's vault API. It lists the
   vault's Markdown files to find the notes with `share:` (to sync them and list them under **Shared pages**). It
   writes the clipboard when you copy a link or a request for an AI chat, and reads it only when you click **Paste
-  the answer** in **Make a page with AI**. It never uses Node's `fs`: the one place `fs` appears in `main.js` is
-  `check.mjs`, the page checker, which **Set up** (Install for coding agents) writes into your vault as a text file
-  for a coding agent to run; the plugin itself never runs it.
+  the answer** in **Make a page with AI**. It never uses Node's `fs`. `check.mjs`, the page checker that **Set up**
+  puts in your vault for a coding agent to run, does; so it isn't inside `main.js` (the plugin downloads it, see
+  above), and the plugin never runs it.
 - **End-to-end encrypted.** A shared note is encrypted on your device (AES-GCM) before it is sent. The key is the
   part of the link after `#`, which browsers never send to the server, so the server stores only ciphertext. Besides
   that, it receives the `editors:` and `viewers:` lists, so it can check who may open the page.
@@ -194,17 +195,19 @@ The plugin writes only to your vault: to the notes you edit on a page, to `<note
 the new notes **New page from template** and **Make a page with AI** make (or the bare template page **Fill it with AI**
 fills), and, when a shared note was changed on both sides, to
 `<note> (web version).md`. When you click **Set up** under **Coding agents** (desktop only), it writes `SKILL.md`,
-`check.mjs`, `md.js`, `example.md` and `templates/` to `.claude/skills/myone-page/` (Claude Code, Cursor) and
-`.agents/skills/myone-page/` (Codex), and rewrites them on a plugin update unless you edited them. Errors are also
+`check.mjs` (downloaded, see _Network use_), `md.js`, `example.md` and `templates/` to `.claude/skills/myone-page/`
+(Claude Code, Cursor) and `.agents/skills/myone-page/` (Codex), and rewrites them on a plugin update unless you edited
+them. Errors are also
 logged to `log.txt` in the plugin folder.
 
 ## Build
 
 ```sh
 pnpm install
-pnpm build     # main.js: src/main.ts bundled by esbuild, with the engine files (engine/) as text
+pnpm build     # main.js: src/main.ts bundled by esbuild, with the engine files (engine/) as text and check.mjs's SHA-256
 pnpm dev       # rebuild on change
-pnpm skill     # copy check.mjs, md.js and the example into skills/myone-page/ (node skill.mjs --zip <out>: the zip)
+pnpm skill     # copy check.mjs, md.js and the example into skills/myone-page/ (node skill.mjs --zip <out>: the zip;
+               # --checker <dir>: <dir>/<hash>.mjs, the check.mjs a sharing server serves at /web/check/ for Set up)
 pnpm verify    # Prettier, ESLint (Obsidian's rules), the sample page, the skill copies, the build: what a release runs
 ```
 

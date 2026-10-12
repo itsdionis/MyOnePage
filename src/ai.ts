@@ -216,7 +216,15 @@ export class MakeWithAI extends Modal {
     tip.appendText(' and it writes better pages.');
   }
 
+  // A failure says so instead of leaving the dialog as it was.
   async make(answer: string) {
+    try {
+      await this.makePage(answer);
+    } catch (e) {
+      new Notice(`MyOnePage: could not make the page: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  async makePage(answer: string) {
     if (!answer.trim()) return new Notice("Paste the AI's answer first.");
     const src = this.source,
       page = toPage(pageText(answer), src?.basename ?? 'Page');
