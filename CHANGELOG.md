@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.6 (unreleased)
+## 1.0.6
 
 - **Set up** for coding agents downloads the page checker (`check.mjs`) from myone.page instead of carrying it inside
   the plugin, and keeps it only if it is exactly the file this version expects. It needs a connection the first time;
