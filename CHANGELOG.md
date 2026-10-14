@@ -1,6 +1,10 @@
 # Changelog
 
-## 1.0.7 (unreleased)
+## 1.0.8 (unreleased)
+
+- No more style warnings in Obsidian's plugin check. Pages look the same, on older iPhones and iPads too.
+
+## 1.0.7
 
 - **Five new templates** in **New page from template** (and in **Start from** under **Make a page with AI**): a
   **project status report** (red, amber or green per area, milestones, risks, the decisions needed), a **weekly
