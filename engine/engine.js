@@ -16,6 +16,7 @@ document.body.insertAdjacentHTML(
   <button id="edit" title="click any text for a quick edit; this is full editing: drag, add and delete blocks">✎ edit</button>
   <button id="dl" title="download the page as Markdown">MD</button>
   <button id="html" title="download one HTML file to share">HTML</button>
+  <button id="scheme"></button>
 </div>`,
 );
 const $ = (t, c, h) => {
@@ -25,6 +26,46 @@ const $ = (t, c, h) => {
   return e;
 };
 const CFG = window.MYONEPAGE || {};
+// A host page that embeds the engine (the Obsidian plugin) may set window.HOST:
+// sources() -> {css, md, js} as text, saveHTML(html) to keep the file itself, and scheme(s) to keep light or dark.
+const HOST = window.HOST || null;
+// Light or dark is data-scheme on <html>; the theme (engine.css) is data-theme, set by the host. ☀/☾ flips light
+// and dark. A host with scheme() sets data-scheme and keeps the choice; otherwise this browser does, and until
+// then the page follows the system.
+const ROOT = document.documentElement,
+  LIGHT = matchMedia('(prefers-color-scheme: light)'),
+  ownScheme = !HOST?.scheme;
+const savedScheme = () => {
+  try {
+    return localStorage.getItem('scheme');
+  } catch {
+    return null; // storage may be blocked
+  }
+};
+function paintScheme() {
+  const b = document.getElementById('scheme'),
+    to = ROOT.dataset.scheme === 'light' ? 'dark' : 'light';
+  b.textContent = to === 'light' ? '☀' : '☾';
+  b.title = `switch to ${to}`;
+  b.dataset.to = to;
+}
+new MutationObserver(paintScheme).observe(ROOT, { attributeFilter: ['data-scheme'] });
+if (ownScheme) {
+  const follow = () => (ROOT.dataset.scheme = savedScheme() || (LIGHT.matches ? 'light' : 'dark'));
+  LIGHT.addEventListener('change', follow);
+  follow();
+}
+paintScheme();
+document.getElementById('scheme').onclick = (e) => {
+  const to = e.currentTarget.dataset.to;
+  if (!ownScheme) return HOST.scheme(to); // the host sets data-scheme back, on every page it shows
+  ROOT.dataset.scheme = to;
+  try {
+    localStorage.setItem('scheme', to);
+  } catch {
+    /* storage may be blocked */
+  }
+};
 const SLUG = CFG.slug || new URLSearchParams(location.search).get('p') || '';
 const DATA = CFG.data || `pages/${encodeURIComponent(SLUG)}.md`,
   LSKEY = SLUG + '-doc';
@@ -77,6 +118,8 @@ function ed(el, path) {
 
 const AXIS = {
   gantt: 'vert',
+  pie: 'vert',
+  bar: 'horiz',
   canvas: 'vert',
   cards: 'horiz',
   uc: 'vert',
@@ -126,6 +169,30 @@ const TPL = {
       { name: 'Engineering', tasks: [{ t: 'Task', tags: [], id: '', start: isoToday(), end: '4w' }] },
     ],
   }),
+  pie: () => ({
+    type: 'pie',
+    title: 'Title',
+    showData: false,
+    extra: [],
+    items: [
+      { l: 'First', v: '50' },
+      { l: 'Second', v: '30' },
+      { l: 'Third', v: '20' },
+    ],
+  }),
+  bar: () => ({
+    type: 'bar',
+    kw: 'xychart-beta',
+    horizontal: false,
+    title: 'Title',
+    xTitle: '',
+    yTitle: '',
+    yMin: '',
+    yMax: '',
+    extra: [],
+    series: [{ k: 'bar' }],
+    items: ['Q1:40', 'Q2:55', 'Q3:48', 'Q4:70'].map((x) => ({ l: x.split(':')[0], v: [x.split(':')[1]] })),
+  }),
   canvas: () => ({
     type: 'canvas',
     cells: [
@@ -153,6 +220,8 @@ const TPL_ITEM = {
   ol: () => ({ b: 'Step.', s: 'detail' }),
   cmdcols: () => ({ c: ['cmd'], s: 'what it does' }),
   gantt: () => ({ t: 'Task', tags: [], id: '', start: '', end: '2w' }),
+  pie: () => ({ l: 'Slice', v: '10' }),
+  bar: () => null,
   table: () => null,
 };
 const LABEL = {
@@ -169,6 +238,8 @@ const LABEL = {
   ol: 'numbered list',
   table: 'table',
   gantt: 'gantt',
+  pie: 'pie chart',
+  bar: 'bar chart',
   p: 'text',
   canvas: 'lean canvas',
 };
@@ -244,7 +315,7 @@ function render() {
     const P = `blocks.${bi}`;
     const sec = $('section', 'blk');
     sec.dataset.bi = bi;
-    sec.dataset.axis = AXIS[b.type] || 'vert';
+    sec.dataset.axis = (b.type === 'bar' && b.horizontal ? 'vert' : AXIS[b.type]) || 'vert';
     root.appendChild(sec);
     const fl = !RO && FLAGS.get(b);
     if (fl) {
@@ -441,6 +512,8 @@ function render() {
       });
       app.appendChild(g);
     } else if (b.type === 'gantt') app.appendChild(gantt(b, P));
+    else if (b.type === 'pie') app.appendChild(pie(b, P));
+    else if (b.type === 'bar') app.appendChild(xy(b, P));
     else if (b.type === 'p') {
       // Markdown that is not a block, kept as written
       const e = ed($('div', 'ptext'), P + '.text');
@@ -566,6 +639,181 @@ function gantt(b, P) {
     });
   });
   return sc;
+}
+
+// Pie: a donut and a legend. Labels and values are edited in the legend (values show while editing,
+// or always with showData); the donut and the percentages follow as you type.
+const PIE = ['accent', 'blue', 'warm', 'violet', 'teal', 'bad', 'gold', 'faint'].map((k) => `var(--${k})`);
+function pie(b, P) {
+  const w = $('div', 'pie' + (b.showData ? ' data' : ''));
+  if (b.title) w.appendChild(Object.assign(ed($('div', 'gtitle'), P + '.title'), { textContent: b.title }));
+  const body = $('div', 'pbody'),
+    NS = 'http://www.w3.org/2000/svg',
+    svg = document.createElementNS(NS, 'svg'),
+    ul = $('ul', 'plegend'),
+    sum = $('div', 'psum');
+  svg.setAttribute('viewBox', '-1 -1 2 2');
+  const donut = $('div', 'pdonut');
+  donut.append(svg, sum);
+  body.append(donut, ul);
+  w.appendChild(body);
+  const hi = (i, on) => {
+    ul.children[i]?.classList.toggle('hi', on);
+    svg.children[i]?.classList.toggle('hi', on);
+  };
+  const pcts = b.items.map((it, i) => {
+    const li = itm($('li'), `${P}.items`, i);
+    const sw = $('i', 'psw');
+    sw.style.background = PIE[i % PIE.length];
+    li.appendChild(sw);
+    li.appendChild(Object.assign(ed($('span', 'pl'), `${P}.items.${i}.l`), { textContent: it.l }));
+    li.appendChild(Object.assign(ed($('span', 'pv'), `${P}.items.${i}.v`), { textContent: it.v }));
+    const pc = $('span', 'pp');
+    li.appendChild(pc);
+    li.onmouseenter = () => hi(i, true);
+    li.onmouseleave = () => hi(i, false);
+    ul.appendChild(li);
+    return pc;
+  });
+  const num = (v) => Math.max(0, parseFloat(String(v).replace(',', '.')) || 0);
+  const fmt = (x) => (Math.round(x * 100) / 100).toLocaleString('en');
+  const draw = () => {
+    const vs = b.items.map((it) => num(it.v)),
+      total = vs.reduce((a, x) => a + x, 0),
+      many = vs.filter((x) => x > 0).length > 1;
+    svg.replaceChildren();
+    let at = 0;
+    vs.forEach((v, i) => {
+      const p = total ? (v / total) * 100 : 0,
+        c = document.createElementNS(NS, 'circle');
+      c.setAttribute('r', '0.78');
+      c.setAttribute('pathLength', '100');
+      // a hairline gap between slices; the dash starts at 12 o'clock (the svg is turned -90deg)
+      const len = many ? Math.max(0, p - 0.6) : p;
+      c.setAttribute('stroke-dasharray', `${len} ${100 - len}`);
+      c.setAttribute('stroke-dashoffset', String(-at));
+      c.style.stroke = PIE[i % PIE.length];
+      const t = document.createElementNS(NS, 'title');
+      t.textContent = `${b.items[i].l}: ${fmt(v)} (${Math.round(p)}%)`;
+      c.appendChild(t);
+      c.onmouseenter = () => hi(i, true);
+      c.onmouseleave = () => hi(i, false);
+      svg.appendChild(c);
+      at += p;
+      pcts[i].textContent = total ? `${p < 1 && p > 0 ? '<1' : Math.round(p)}%` : '';
+    });
+    sum.textContent = total ? fmt(total) : '—';
+  };
+  draw();
+  w.addEventListener('input', draw);
+  return w;
+}
+
+// Bar chart (Mermaid xychart): a column per category (a row when horizontal), its bars side by side, line
+// series drawn over them. Values are edited on the bars and points, names under them; the scale follows as you type.
+function xy(b, P) {
+  const w = $('div', 'xy' + (b.horizontal ? ' horiz' : '')),
+    NS = 'http://www.w3.org/2000/svg',
+    n = b.items.length,
+    bars = b.series.map((s, j) => j).filter((j) => b.series[j].k === 'bar');
+  if (b.title) w.appendChild(Object.assign(ed($('div', 'gtitle'), P + '.title'), { textContent: b.title }));
+  if (b.yTitle) w.appendChild(Object.assign(ed($('div', 'xyt'), P + '.yTitle'), { textContent: b.yTitle }));
+  if (n * Math.max(1, bars.length) > 12) w.classList.add('dense');
+  const body = $('div', 'xbody'),
+    axis = $('div', 'xaxis'),
+    cols = $('div', 'xcols'),
+    grid = $('div', 'xover xgrid'),
+    over = $('div', 'xover'),
+    svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 100 100');
+  svg.setAttribute('preserveAspectRatio', 'none');
+  over.appendChild(svg);
+  cols.appendChild(grid); // under the bars; the lines (over) go on top of them
+  cols.style.setProperty('--n', n);
+  const marks = b.items.map((it, i) => {
+    const c = itm($('div', 'xc'), `${P}.items`, i),
+      plot = $('div', 'xcp');
+    const ms = b.series.map((sr, j) => {
+      const m = $('span', sr.k === 'bar' ? 'xbar' : 'xdot');
+      m.style.setProperty('--c', PIE[j % PIE.length]);
+      m.appendChild(Object.assign(ed($('span', 'xv'), `${P}.items.${i}.v.${j}`), { textContent: it.v[j] }));
+      plot.appendChild(m);
+      return m;
+    });
+    c.appendChild(plot);
+    c.appendChild(Object.assign(ed($('div', 'xl'), `${P}.items.${i}.l`), { textContent: it.l }));
+    cols.appendChild(c);
+    return ms;
+  });
+  cols.appendChild(over);
+  body.append(axis, cols);
+  w.appendChild(body);
+  if (b.xTitle) w.appendChild(Object.assign(ed($('div', 'xxt'), P + '.xTitle'), { textContent: b.xTitle }));
+
+  const num = (v) => parseFloat(String(v).replace(',', '.')) || 0;
+  const short = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
+  const draw = () => {
+    const vs = b.items.flatMap((it) => it.v.map(num));
+    const fixed = b.yMin !== '' && b.yMax !== '' && num(b.yMax) > num(b.yMin);
+    let lo = fixed ? num(b.yMin) : Math.min(0, ...vs),
+      hi = fixed ? num(b.yMax) : Math.max(0, ...vs);
+    if (hi === lo) hi = lo + 1;
+    const e = 10 ** Math.floor(Math.log10((hi - lo) / 4)),
+      f = (hi - lo) / 4 / e,
+      step = (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * e;
+    if (!fixed) {
+      lo = Math.floor(lo / step) * step;
+      hi = Math.ceil(hi / step) * step;
+    }
+    const at = (v) => ((Math.min(hi, Math.max(lo, v)) - lo) / (hi - lo)) * 100,
+      zero = at(0);
+    // the value axis runs up (columns) or right (rows)
+    const [from, len, across, size] = b.horizontal
+      ? ['left', 'width', 'top', 'height']
+      : ['bottom', 'height', 'left', 'width'];
+    grid.replaceChildren();
+    axis.replaceChildren();
+    for (let t = Math.ceil(lo / step) * step; t <= hi + step / 1e6; t += step) {
+      const g = $('i', Math.abs(t) < step / 1e6 ? 'zero' : '');
+      g.style[from] = at(t) + '%';
+      grid.appendChild(g);
+      const l = $('span', '', short.format(Math.abs(t) < step / 1e6 ? 0 : t));
+      l.style[from] = at(t) + '%';
+      axis.appendChild(l);
+    }
+    svg.replaceChildren();
+    const gap = 18,
+      bw = (100 - 2 * gap) / Math.max(1, bars.length);
+    b.series.forEach((sr, j) => {
+      const pts = [];
+      b.items.forEach((it, i) => {
+        const v = num(it.v[j]),
+          m = marks[i][j],
+          p = at(v);
+        m.title = `${it.l}: ${it.v[j]}`;
+        m.classList.toggle('neg', v < 0);
+        if (sr.k === 'bar') {
+          m.style[from] = Math.min(p, zero) + '%';
+          m.style[len] = Math.abs(p - zero) + '%';
+          m.style[across] = gap + bars.indexOf(j) * bw + '%';
+          m.style[size] = bw + '%';
+        } else {
+          m.style[from] = p + '%';
+          pts.push(b.horizontal ? `${p},${((i + 0.5) / n) * 100}` : `${((i + 0.5) / n) * 100},${100 - p}`);
+        }
+      });
+      if (sr.k === 'line' && pts.length > 1) {
+        const pl = document.createElementNS(NS, 'polyline');
+        pl.setAttribute('points', pts.join(' '));
+        pl.setAttribute('vector-effect', 'non-scaling-stroke');
+        pl.style.stroke = PIE[j % PIE.length];
+        svg.appendChild(pl);
+      }
+    });
+  };
+  draw();
+  w.addEventListener('input', draw);
+  return w;
 }
 
 // Drag a gantt bar to move the task, its right edge to change its length (whole days).
@@ -856,6 +1104,7 @@ function buildTools() {
             if (!b.sections.length) b.sections.push({ name: '', tasks: [] });
             b.sections[b.sections.length - 1].tasks.push(t);
           } else if (b.type === 'table') b.rows.push(b.head.map(() => ''));
+          else if (b.type === 'bar') b.items.push({ l: 'New', v: b.series.map(() => '0') });
           else (b.items || b.steps).push(TPL_ITEM[b.type]());
           render();
           DIRTY = true;
@@ -1449,20 +1698,17 @@ const fileName = (ext) =>
       .replace(/[\\/:*?"<>|#%]+/g, ' ')
       .trim()) ||
     SLUG) + ext;
-// A host page that embeds the engine (the Obsidian plugin) may set window.HOST:
-// sources() -> {css, md, js} as text, and saveHTML(html) to keep the file itself.
-const HOST = window.HOST || null;
+// The page's styles: engine.css and toc.css (its side contents), as the page links them.
+const STYLES = () =>
+  [...document.querySelectorAll('link[href$="engine.css"], link[href$="toc.css"]')].map((l) => l.href);
 document.getElementById('html').onclick = async () => {
+  const text = async (u) => (await fetch(u, { cache: 'no-store' })).text();
   const [css, md, js] = HOST
     ? (({ css, md, js }) => [css, md, js])(await HOST.sources())
-    : await Promise.all(
-        [document.querySelector('link[href$="engine.css"]').href, MD_JS, ENGINE_JS].map(async (u) =>
-          (await fetch(u, { cache: 'no-store' })).text(),
-        ),
-      );
+    : await Promise.all([Promise.all(STYLES().map(text)).then((t) => t.join('\n')), text(MD_JS), text(ENGINE_JS)]);
   const esc = (s, tag) => s.replace(new RegExp('</' + tag, 'gi'), '<\\/' + tag);
   const html = `<!doctype html>
-<html lang="${document.documentElement.lang}">
+<html lang="${ROOT.lang}"${ROOT.dataset.theme ? ` data-theme="${ROOT.dataset.theme}"` : ''}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

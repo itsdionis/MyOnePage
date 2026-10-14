@@ -4,6 +4,7 @@
 import { Plugin, TextFileView, MarkdownView, Notice, Modal, TFile, TFolder, normalizePath, setIcon } from 'obsidian';
 import type { WorkspaceLeaf, View } from 'obsidian';
 import css from '../engine/engine.css?text';
+import toc from '../engine/toc.css?text';
 import md from '../engine/md.js?text';
 import js from '../engine/engine.js?text';
 import { WebSync, WebSettings, frontmatter, webLive, webList, webShare } from './web';
@@ -12,9 +13,11 @@ import { TEMPLATES, TemplatePicker, newFromTemplate } from './templates';
 import type { Template } from './templates';
 import { MakeWithAI } from './ai';
 import { SkillInstall } from './skill';
+import { look, lookAttrs, isScheme } from './look';
+import type { LookPrefs } from './look';
 import type { SkillPrefs } from './skill';
 
-const ENGINE = { css, md, js };
+const ENGINE = { css: `${css}\n${toc}`, md, js }; // the page's styles: engine.css and its side contents (toc.css)
 
 const VIEW = 'myone-page';
 const FLAG = 'myone.page'; // frontmatter `myone.page: true` opens the note as a page
@@ -24,10 +27,12 @@ const esc = (s: string, tag: string) => s.replace(new RegExp('</' + tag, 'gi'), 
 const SHIM = `(function(){
   const pend=new Map(); let n=0;
   addEventListener('message',e=>{ const d=e.data;
-    if(e.source===parent&&d&&d.op==='theme') document.documentElement.dataset.theme=d.theme;
+    if(e.source===parent&&d&&d.op==='look'){ const r=document.documentElement; r.dataset.scheme=d.scheme;
+      if(d.theme) r.dataset.theme=d.theme; else delete r.dataset.theme; }
     if(e.source===parent&&d&&d.op==='reply'&&pend.has(d.n)){ pend.get(d.n)(d); pend.delete(d.n); } });
   const ask=(op,body)=>new Promise(res=>{ const k=++n; pend.set(k,res); parent.postMessage({myonepage:true,op,n:k,body},'*'); });
-  window.HOST={ sources:async()=>(await ask('sources')).sources, saveHTML:async(html)=>(await ask('html',html)).text };
+  window.HOST={ sources:async()=>(await ask('sources')).sources, saveHTML:async(html)=>(await ask('html',html)).text,
+    scheme:(s)=>parent.postMessage({myonepage:true,op:'scheme',body:s},'*') };
   const log=(...a)=>parent.postMessage({myonepage:true,op:'log',body:a.map(String).join(' ')},'*');
   addEventListener('error',e=>log('error:',e.message,'at',e.lineno+':'+e.colno));
   addEventListener('unhandledrejection',e=>log('rejection:',e.reason&&(e.reason.stack||e.reason)));
@@ -51,7 +56,7 @@ interface Message {
   n?: number;
   body?: unknown;
 }
-export interface Prefs {
+export interface Prefs extends LookPrefs {
   server: string;
   token: string; // the sharing server's token (see WebSync): in data.json, so it syncs with the vault
   every: number;
@@ -61,10 +66,8 @@ export interface Prefs {
 }
 type Mode = 'source' | 'preview';
 
-const theme = () => (document.body.classList.contains('theme-light') ? 'light' : 'dark');
-
-function page() {
-  return `<!doctype html><html data-theme="${theme()}"><head><meta charset="utf-8">
+function page(prefs: LookPrefs) {
+  return `<!doctype html><html ${lookAttrs(prefs)}><head><meta charset="utf-8">
 <style>${esc(ENGINE.css, 'style')}
 #dl{display:none}</style></head><body>
 <script>${esc(SHIM, 'script')}</script>
@@ -166,7 +169,7 @@ class MyOnePageView extends TextFileView {
     this.refreshSample();
     this.frame = this.contentEl.createEl('iframe', { cls: 'myone-page-frame' });
     this.frame.setAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox allow-downloads');
-    this.frame.srcdoc = page();
+    this.frame.srcdoc = page(this.plugin.prefs);
   }
 
   async onMessage(e: MessageEvent) {
@@ -176,6 +179,7 @@ class MyOnePageView extends TextFileView {
     const reply = (x: object) => win.postMessage({ op: 'reply', n: d.n, ...x }, '*');
     if (d.op === 'log') return this.plugin.log(`${this.file ? this.file.path : '?'}: ${String(d.body)}`);
     if (d.op === 'sources') return reply({ sources: ENGINE });
+    if (d.op === 'scheme') return isScheme(d.body) && this.plugin.setLook({ scheme: d.body });
     if (d.op === 'html') {
       try {
         if (!this.file) throw new Error('no file');
@@ -357,12 +361,7 @@ export default class MyOnePagePlugin extends Plugin {
 
     this.registerView(VIEW, (leaf) => new MyOnePageView(leaf, this));
     this.registerEvent(
-      this.app.workspace.on('css-change', () => {
-        // the page follows the light/dark theme
-        for (const leaf of this.app.workspace.getLeavesOfType(VIEW))
-          if (leaf.view instanceof MyOnePageView)
-            leaf.view.frame?.contentWindow?.postMessage({ op: 'theme', theme: theme() }, '*');
-      }),
+      this.app.workspace.on('css-change', () => this.relook()), // pages may follow Obsidian's light or dark
     );
 
     this.addCommand({
@@ -503,6 +502,17 @@ export default class MyOnePagePlugin extends Plugin {
     await this.saveSettings();
   }
 
+  // Every open page takes the look in the settings.
+  relook() {
+    const msg = { op: 'look', ...look(this.prefs) };
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW))
+      if (leaf.view instanceof MyOnePageView) leaf.view.frame?.contentWindow?.postMessage(msg, '*');
+  }
+  async setLook(change: LookPrefs) {
+    Object.assign(this.prefs, change);
+    await this.saveSettings();
+    this.relook();
+  }
   async saveSettings() {
     await this.saveData(this.prefs);
   }

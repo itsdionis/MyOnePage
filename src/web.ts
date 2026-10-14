@@ -13,6 +13,7 @@ import * as WEB from 'obsidian';
 import type { App, TFile } from 'obsidian';
 import type MyOnePagePlugin from './main';
 import { skillSettings } from './skill';
+import { lookSettings } from './look';
 import '../engine/seal.js'; // a classic script: sets window.SEAL
 
 const { SEAL } = window;
@@ -648,6 +649,7 @@ export class WebSettings extends WEB.PluginSettingTab {
             await p.saveSettings();
           }),
       );
+    lookSettings(el, p);
     skillSettings(el, p);
     new WEB.Setting(el).setName('Share on the web').setHeading();
     el.createEl('p', {

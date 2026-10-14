@@ -10,13 +10,18 @@ note. It stays a plain Markdown note you can still open, search and link.
 </picture>
 
 **See finished pages first** (each one is a single note, open in a browser, no sign-in):
-[investor update](https://myone.page/examples/investor-update) ·
-[board pre-read](https://myone.page/examples/board-pre-read) ·
-[client proposal](https://myone.page/examples/client-proposal) ·
-[client results report](https://myone.page/examples/client-report) ·
-[strategy memo](https://myone.page/examples/strategy-memo) ·
-[product brief](https://myone.page/examples/product-brief) ·
-[Obsidian plugin market analysis](https://myone.page/examples/obsidian-plugin-market)
+[investor update](https://myone.page/templates/investor-update) ·
+[board pre-read](https://myone.page/templates/board-pre-read) ·
+[client proposal](https://myone.page/templates/client-proposal) ·
+[client results report](https://myone.page/templates/client-report) ·
+[strategy memo](https://myone.page/templates/strategy-memo) ·
+[product brief](https://myone.page/templates/product-brief) ·
+[project status report](https://myone.page/templates/project-status-report) ·
+[weekly update](https://myone.page/templates/weekly-update) ·
+[project brief](https://myone.page/templates/project-brief) ·
+[one-page business plan](https://myone.page/templates/one-page-business-plan) ·
+[company one-pager](https://myone.page/templates/business-one-pager) ·
+[Obsidian plugin market analysis](https://myone.page/blog/what-makes-an-obsidian-plugin-win)
 
 **The plugin is free.** Pages, editing on the page, HTML export and writing pages with AI work without an account, with
 no time limit. **Sharing is optional:** publish a page to [myone.page](https://myone.page) and your team edits it in
@@ -43,15 +48,20 @@ once: the parts, numbers, cards and timeline it needs, each field saying what go
 line, with a number"). Click any text and write your own, or click **Fill it with AI** above the page to have an AI
 chat fill it from your notes (see [Write pages with AI](#write-pages-with-ai)).
 
-| Template              | For                                     | Follows                                                                |
-| --------------------- | --------------------------------------- | ---------------------------------------------------------------------- |
-| Investor update       | investors and advisors, monthly         | YC's format: numbers, highlights, lowlights, asks, goals               |
-| Board pre-read        | the board, two days before each meeting | Sequoia's board deck: big picture, numbers against plan, one deep dive |
-| Client proposal       | a client, before the contract           | the options as cards, the timeline, the price                          |
-| Client results report | a client, each quarter                  | a quarterly business review: results against goals, the next 90 days   |
-| Product brief         | the team building it                    | a Shape Up pitch: problem, appetite, solution, rabbit holes, no-gos    |
-| Strategy memo         | the team and the board, yearly          | Rumelt's kernel: diagnosis, guiding policy, coherent actions           |
-| Blank                 | anything                                | a title, a hero line and one part                                      |
+| Template               | For                                     | Follows                                                                |
+| ---------------------- | --------------------------------------- | ---------------------------------------------------------------------- |
+| Investor update        | investors and advisors, monthly         | YC's format: numbers, highlights, lowlights, asks, goals               |
+| Board pre-read         | the board, two days before each meeting | Sequoia's board deck: big picture, numbers against plan, one deep dive |
+| Client proposal        | a client, before the contract           | the options as cards, the timeline, the price                          |
+| Client results report  | a client, each quarter                  | a quarterly business review: results against goals, the next 90 days   |
+| Product brief          | the team building it                    | a Shape Up pitch: problem, appetite, solution, rabbit holes, no-gos    |
+| Strategy memo          | the team and the board, yearly          | Rumelt's kernel: diagnosis, guiding policy, coherent actions           |
+| Project status report  | a sponsor or steering group, weekly     | red, amber or green per area, milestones, risks, decisions needed      |
+| Weekly update          | the team and its manager, every Friday  | progress, plans, problems: shipped, numbers, next week, blockers       |
+| Project brief          | everyone on a project, before it starts | goal, scope in and out, stakeholders (RACI), timeline, budget, metrics |
+| One-page business plan | founders, a bank, early investors       | a lean canvas, the market, the revenue model, 12 months of milestones  |
+| Company one-pager      | customers, partners and investors       | problem, solution, traction, customers, team, the ask                  |
+| Blank                  | anything                                | a title, a hero line and one part                                      |
 
 To see one finished first, open its example on myone.page (the links above). **Use this template** at the top of an
 example opens Obsidian with a new note from the matching template, if the plugin is installed.
@@ -84,7 +94,9 @@ title: Q4 plan
   brings the page back. **Cycle view: editing, reading, one-pager** does the same from the command palette.
 - **HTML** saves `<note>.html`: one read-only file you can send to anyone. It goes next to the note, or to the
   folder set in **HTML export folder** in the plugin settings.
-- The page follows Obsidian's light or dark theme.
+- **Themes**: seven looks, each light and dark (see [Themes](#themes)).
+- The page follows Obsidian's light or dark mode; **☀** / **☾** in the bar (or **Light or dark** in the settings)
+  picks one for every page instead.
 
 ### Blocks
 
@@ -103,8 +115,31 @@ title: Q4 plan
 | Command columns    | `> [!cmdcols]`                                    |
 | Lean canvas        | `> [!canvas]`                                     |
 | Timeline           | a ` ```mermaid ` block starting with `gantt`      |
+| Pie chart          | a ` ```mermaid ` block starting with `pie`        |
+| Bar chart          | a ` ```mermaid ` block starting with `xychart`    |
 
 Anything else is shown as plain text, exactly as written.
+
+## Themes
+
+<img src="https://raw.githubusercontent.com/itsdionis/MyOnePage/main/assets/themes.gif" width="960" alt="The same page in every theme, light and dark: Mint, Minimal, GitHub, Things, Cupertino, Claude Warm and Paper">
+
+Pick one under **Appearance** in the plugin settings; it applies to every page. Each theme is a whole look, not just a
+palette: its own corners, borders, shadows, spacing, page width, fonts and headings, in a light and a dark version.
+
+| Theme          | After            | The look                                                               |
+| -------------- | ---------------- | ---------------------------------------------------------------------- |
+| Mint (default) | myone.page       | slate or white, a mint accent, rounded bordered cards                  |
+| Minimal        | kepano's Minimal | flat borderless cards, a narrow airy page, light headings              |
+| GitHub         | GitHub (Primer)  | bordered boxes, 6px corners, underlined section titles, striped tables |
+| Things         | Things           | white cards lifted by a hairline shadow, blue section titles           |
+| Cupertino      | Cupertino        | white cards on grey, large corners, a frosted bar, a large title       |
+| Claude Warm    | Claude Warm      | warm ivory and charcoal, serif text, a sans interface                  |
+| Paper          | a printed report | book serif, hairlines, square corners, a heavy rule over each section  |
+
+Light or dark follows Obsidian; **☀** / **☾** in a page's bar, or **Light or dark** in the settings, picks one for
+every page instead. HTML files keep the theme and open in their reader's light or dark. Shared pages on the web show
+the default theme, light or dark as the reader's system is set.
 
 ## Write pages with AI
 

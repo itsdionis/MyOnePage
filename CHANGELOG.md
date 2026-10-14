@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.0.7 (unreleased)
+
+- **Five new templates** in **New page from template** (and in **Start from** under **Make a page with AI**): a
+  **project status report** (red, amber or green per area, milestones, risks, the decisions needed), a **weekly
+  update** (what shipped, the numbers, next week, blockers), a **project brief** (goal, scope in and out, who
+  decides, timeline, budget, success metrics), a **one-page business plan** (a lean canvas, the market, the revenue
+  model, 12 months of milestones) and a **company one-pager** for customers and investors (problem, solution,
+  traction, customers, team, the ask). Each has a finished example on myone.page, and coding agents get them too
+  after **Set up**.
+- New block: **pie chart**. Add it from **add a block** while editing, or write a Mermaid `pie` chart in the note
+  (Obsidian draws it too). The page shows a donut with the total in the middle and a legend with each slice's share;
+  labels and values are edited right in the legend and the chart follows as you type. Slices can be reordered, added
+  and deleted.
+- New block: **bar chart**, a Mermaid `xychart-beta` chart (Obsidian draws it too): bars, side by side when there are
+  several series, lines drawn over them, negative values, and a horizontal version with names on the left. Values
+  are edited right on the bars and points and the chart rescales as you type; categories can be reordered, added
+  and deleted.
+- **Themes**: the plugin settings have an **Appearance** section with a theme for every page: Mint (the look so
+  far, still the default), Minimal, GitHub, Things, Cupertino, Claude Warm or Paper, each in light and dark. HTML files a
+  page saves keep its theme. A theme is a whole look, not just colours: its own corners, borders, shadows, spacing,
+  page width, fonts and headings (GitHub's underlined section titles and striped tables, Cupertino's rounded cards
+  on grey with a frosted bar, Claude Warm's serif text, Minimal's flat, airy page, Things' soft lifted cards, Paper's printed report: book serif, hairlines and a heavy rule over
+  each part).
+- Pie and bar charts sit in a card, like the rest of the page, and take their colours from the theme.
+- **☀ / ☾** in the bar switches a page between light and dark, and every page follows. Until you use it, pages
+  follow Obsidian as before; **Light or dark** in the settings sets it back to that. Shared pages and HTML files
+  follow the reader's system, and readers can switch too.
+
 ## 1.0.6
 
 - **Set up** for coding agents downloads the page checker (`check.mjs`) from myone.page instead of carrying it inside

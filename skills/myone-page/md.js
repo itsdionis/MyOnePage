@@ -244,7 +244,8 @@ var MD = (function () {
               i = k;
               continue;
             }
-            const b = info === 'mermaid' ? gantt(L.slice(i + 1, e), ln, note) : null;
+            const body = L.slice(i + 1, e),
+              b = info === 'mermaid' ? gantt(body, ln, note) || pie(body, ln, note) || xy(body, ln, note) : null;
             if (b) add(b);
             else p(i, Math.min(e + 1, L.length));
             i = e + 1;
@@ -527,6 +528,86 @@ var MD = (function () {
     return b;
   }
 
+  // A Mermaid pie chart (```mermaid / pie), which Obsidian draws too: "pie", optional "showData" and
+  // "title", then slices `"Label" : 42`. A " in a label is written #quot;. accTitle/accDescr/%% kept.
+  function pie(body, ln, note) {
+    const ls = body.map((x) => x.trim()).filter(Boolean);
+    const h = /^pie(\s+showData)?(?:\s+title\s+(.*))?$/.exec(ls.shift() || '');
+    if (!h) return null;
+    const fail = (why) => {
+      note(ln, 'warn', `pie: ${why}; kept as plain text`);
+      return null;
+    };
+    const b = { type: 'pie', title: (h[2] || '').trim(), showData: !!h[1], extra: [], items: [] };
+    for (const x of ls) {
+      const m = /^"([^"]*)"\s*:\s*(\d+(?:\.\d+)?)$/.exec(x);
+      if (m) b.items.push({ l: m[1].replace(/#quot;/g, '"'), v: m[2] });
+      else if (/^title(\s|$)/.test(x) && !b.items.length) b.title = x.slice(5).trim();
+      else if (/^(accTitle|accDescr)\b/.test(x) || x.startsWith('%%')) b.extra.push(x);
+      else return fail(`"${x}" is not a slice ('"Label" : 42', a number 0 or more)`);
+    }
+    return b;
+  }
+
+  // A Mermaid bar/line chart (```mermaid / xychart-beta [horizontal]), which Obsidian draws too: optional
+  // title, x-axis "title" [categories], y-axis "title" min --> max, then one or more "bar [..]" / "line [..]"
+  // rows, one value per category. Kept per category: items[i] = {l, v: [one value per series]}.
+  function xy(body, ln, note) {
+    const ls = body.map((x) => x.trim()).filter(Boolean);
+    const h = /^(xychart-beta|xychart)(\s+horizontal)?$/.exec(ls.shift() || '');
+    if (!h) return null;
+    const fail = (why) => {
+      note(ln, 'warn', `${h[1]}: ${why}; kept as plain text`);
+      return null;
+    };
+    const str = (x) => {
+      x = (x || '').trim();
+      return (/^"(.*)"$/.exec(x)?.[1] ?? x).replace(/#quot;/g, '"');
+    };
+    const NUM = /^-?\d+(?:\.\d+)?$/;
+    const b = {
+      type: 'bar',
+      kw: h[1],
+      horizontal: !!h[2],
+      title: '',
+      xTitle: '',
+      yTitle: '',
+      yMin: '',
+      yMax: '',
+      extra: [],
+      series: [],
+      items: [],
+    };
+    let cats = null;
+    const rows = [];
+    for (const x of ls) {
+      let m;
+      if ((m = /^title\s+(.*)$/.exec(x))) b.title = str(m[1]);
+      else if ((m = /^x-axis(?:\s+("[^"]*"|[^\s[]+))?\s*\[(.*)\]$/.exec(x))) {
+        b.xTitle = str(m[1]);
+        cats = (m[2].match(/"[^"]*"|[^,\s][^,]*/g) || []).map(str);
+      } else if (
+        (m = /^y-axis(?:\s+("[^"]*"|[^\s\d-][^\s]*))?(?:\s+(-?\d+(?:\.\d+)?)\s*-->\s*(-?\d+(?:\.\d+)?))?$/.exec(x))
+      ) {
+        b.yTitle = str(m[1]);
+        b.yMin = m[2] || '';
+        b.yMax = m[3] || '';
+      } else if ((m = /^(bar|line)\s*\[(.*)\]$/.exec(x))) {
+        const vs = m[2].split(',').map((y) => y.trim());
+        if (!vs.every((y) => NUM.test(y))) return fail(`"${x}": values are numbers, comma separated`);
+        b.series.push({ k: m[1] });
+        rows.push(vs);
+      } else if (/^(accTitle|accDescr)\b/.test(x) || x.startsWith('%%')) b.extra.push(x);
+      else return fail(`"${x}" is not understood (title, x-axis [..], y-axis, bar [..], line [..])`);
+    }
+    if (!cats) return fail('the page needs categories: x-axis [a, b, c]');
+    if (!rows.length) return fail('no bar [..] or line [..] row');
+    const bad = rows.find((r) => r.length !== cats.length);
+    if (bad) return fail(`a row has ${bad.length} values for ${cats.length} categories`);
+    b.items = cats.map((l, i) => ({ l, v: rows.map((r) => r[i]) }));
+    return b;
+  }
+
   // Days (UTC day numbers) of each gantt task: rows[section][task] = {from, to} or null when its dates
   // do not resolve. Ends are exclusive, as in Mermaid, unless the chart says inclusiveEndDates.
   function schedule(b) {
@@ -752,6 +833,39 @@ var MD = (function () {
           });
           o.push('```');
           break;
+        case 'pie': {
+          const flat = (x) => String(x).replace(/\s*\n\s*/g, ' ');
+          o.push('```mermaid', b.showData ? 'pie showData' : 'pie');
+          if (b.title) o.push('  title ' + flat(b.title));
+          for (const x of b.extra || []) o.push('  ' + x);
+          for (const it of b.items) {
+            const v = String(it.v).trim().replace(',', '.');
+            o.push(`  "${flat(it.l).replace(/"/g, '#quot;')}" : ${/^\d+(?:\.\d+)?$/.test(v) ? v : '0'}`);
+          }
+          o.push('```');
+          break;
+        }
+        case 'bar': {
+          const q = (x) =>
+              '"' +
+              String(x)
+                .replace(/\s*\n\s*/g, ' ')
+                .replace(/"/g, '#quot;') +
+              '"',
+            n = (x) => {
+              const v = String(x).trim().replace(',', '.');
+              return /^-?\d+(?:\.\d+)?$/.test(v) ? v : '0';
+            };
+          o.push('```mermaid', (b.kw || 'xychart-beta') + (b.horizontal ? ' horizontal' : ''));
+          if (b.title) o.push('  title ' + q(b.title));
+          o.push(`  x-axis ${b.xTitle ? q(b.xTitle) + ' ' : ''}[${b.items.map((it) => q(it.l)).join(', ')}]`);
+          const range = b.yMin !== '' && b.yMax !== '' ? `${n(b.yMin)} --> ${n(b.yMax)}` : '';
+          if (b.yTitle || range) o.push(('  y-axis ' + (b.yTitle ? q(b.yTitle) + ' ' : '') + range).trimEnd());
+          for (const x of b.extra || []) o.push('  ' + x);
+          b.series.forEach((sr, j) => o.push(`  ${sr.k} [${b.items.map((it) => n(it.v[j])).join(', ')}]`));
+          o.push('```');
+          break;
+        }
         case 'p':
           o.push(...String(b.text).split('\n'));
           break;
@@ -823,6 +937,15 @@ var MD = (function () {
               );
           }),
         );
+      }
+      if (b.type === 'pie') {
+        if (!b.items.length) w('warn', `${what}: no slices`);
+        else if (!b.items.some((x) => +x.v > 0)) w('warn', `${what}: every slice is 0, nothing to draw`);
+      }
+      if (b.type === 'bar') {
+        if (!b.items.length) w('warn', `${what}: no categories`);
+        if (b.items.length > 12 && !b.horizontal)
+          w('info', `${what}: ${b.items.length} columns; xychart-beta horizontal reads better`);
       }
       if (b.type === 'p')
         w('info', `${what}: plain text, not a styled block: "${String(b.text).split('\n')[0].slice(0, 60)}"`);

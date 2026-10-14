@@ -27,9 +27,14 @@ a part the notes have nothing for rather than invent it.
 | `client-report.md` | quarterly for a client: results against goals, the next 90 days |
 | `product-brief.md` | problem, appetite, solution, rabbit holes, no-gos (Shape Up's pitch) |
 | `strategy-memo.md` | diagnosis, guiding policy, coherent actions (Rumelt's kernel) |
+| `project-status-report.md` | a project's status: red, amber or green per area, milestones, risks, decisions needed |
+| `weekly-update.md` | a team's week: shipped, numbers, next week, blockers (progress, plans, problems) |
+| `project-brief.md` | goal, scope in and out, stakeholders (RACI), timeline, budget, success metrics |
+| `one-page-business-plan.md` | a lean canvas, the market, the revenue model, 12 months of milestones |
+| `business-one-pager.md` | the company for customers and investors: problem, solution, traction, customers, team, ask |
 | `blank.md` | a title and one part |
 
-Finished pages of each kind are in the plugin repository's `examples/` and at https://myone.page/examples/<name>.
+Finished pages of each kind are in the plugin repository's `examples/` and at https://myone.page/templates/<name>.
 
 ## Workflow
 
@@ -103,6 +108,8 @@ note shown on the right of the divider
 | `cmdcols` | `> [!cmdcols]` + `> #### Column [link](url)` + `> - \`cmd\` what it does`; `[x]` stars | columns of commands |
 | `canvas` | `> [!canvas]` + `> #### N · Title %%slot%%` + `> - line` | lean canvas, 9 boxes |
 | `gantt` | a ` ```mermaid ` block starting with `gantt` | timeline with bars, sections and a today line; Obsidian draws it too |
+| `pie` | a ` ```mermaid ` block starting with `pie` | donut chart with a legend and percentages; Obsidian draws it too |
+| `bar` | a ` ```mermaid ` block starting with `xychart-beta` | bar chart, with lines over it if you like; Obsidian draws it too |
 | `p` | anything else | plain text, kept exactly as written |
 
 In lists, `[x]` and `[!]` go right after the dash: `> - [x] **0** open bugs`.
@@ -189,6 +196,53 @@ gantt
   in whole days. The page writes the result in the task's own form: a date stays a date, a length
   stays a length (`17d`, or `3w` on whole weeks); a task with no start or `after id` gets a fixed start
   date when moved, so it no longer follows the chain. Tasks that follow a moved task move with it.
+
+### Pie charts
+
+A Mermaid pie chart: Obsidian draws it natively, the page draws a donut with a legend.
+
+````markdown
+```mermaid
+pie
+  title Hours by kind of work
+  "Building" : 18
+  "Sales calls" : 9
+  "Support" : 6
+```
+````
+
+- A slice is `"Label" : number` (0 or more, a dot for decimals). Write `#quot;` for a `"` in a label.
+- The page shows each slice's share in percent and the total in the middle. `pie showData` also shows
+  the values in the legend. `title` is optional.
+- Best with 2 to 7 slices; more are hard to tell apart.
+- On the page, labels and values are edited in the legend and the donut follows as you type; slices
+  can be reordered, added and deleted.
+
+### Bar charts
+
+A Mermaid xychart: Obsidian draws it natively, the page draws its own version.
+
+````markdown
+```mermaid
+xychart-beta
+  title "Revenue by month"
+  x-axis "Month" ["Jan", "Feb", "Mar", "Apr"]
+  y-axis "Revenue, $k"
+  bar [50, 60, 75, 82]
+  line [45, 58, 70, 85]
+```
+````
+
+- `x-axis [..]` names the categories and is required; its title is optional. Quote names with a comma
+  or space in them; write `#quot;` for a `"`.
+- One value per category in every `bar [..]` and `line [..]` row (numbers, negatives allowed). Several
+  `bar` rows stand side by side; `line` rows are drawn over the bars. Series have no names, so say
+  what each one is in the title or the text around it.
+- `y-axis "title" 0 --> 100` fixes the scale; leave the range out and the page picks one from zero.
+- `xychart-beta horizontal` draws a bar per row, names on the left: better for long names or more than
+  about 8 categories.
+- On the page, values are edited on the bars and points, names under them, and the chart follows as
+  you type; categories can be reordered, added (a new one is 0 in every series) and deleted.
 
 ### Lean canvas
 

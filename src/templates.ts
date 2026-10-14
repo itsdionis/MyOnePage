@@ -10,6 +10,11 @@ import clientProposal from '../templates/client-proposal.md?text';
 import clientReport from '../templates/client-report.md?text';
 import productBrief from '../templates/product-brief.md?text';
 import strategyMemo from '../templates/strategy-memo.md?text';
+import projectStatusReport from '../templates/project-status-report.md?text';
+import weeklyUpdate from '../templates/weekly-update.md?text';
+import projectBrief from '../templates/project-brief.md?text';
+import onePageBusinessPlan from '../templates/one-page-business-plan.md?text';
+import businessOnePager from '../templates/business-one-pager.md?text';
 import blank from '../templates/blank.md?text';
 
 export interface Template {
@@ -19,8 +24,10 @@ export interface Template {
   text: string;
 }
 
-// In the order founders reach for them: investors and the board, clients, the team. Each follows an established
-// format (YC's investor update, Sequoia's board deck, a quarterly business review, Shape Up's pitch, Rumelt's kernel).
+// In the order founders reach for them: investors and the board, clients, the team's projects and weeks, the company
+// itself. Each follows an established format (YC's investor update, Sequoia's board deck, a quarterly business review,
+// Shape Up's pitch, Rumelt's kernel, a RAG status report, progress-plans-problems, the classic project brief with a
+// RACI table, Ash Maurya's lean canvas, a sales one-pager).
 export const TEMPLATES: Template[] = [
   {
     slug: 'investor-update',
@@ -57,6 +64,36 @@ export const TEMPLATES: Template[] = [
     title: 'Strategy memo',
     line: 'Diagnosis, guiding policy, coherent actions',
     text: strategyMemo,
+  },
+  {
+    slug: 'project-status-report',
+    title: 'Project status report',
+    line: 'Red, amber or green per area, milestones, risks, decisions needed',
+    text: projectStatusReport,
+  },
+  {
+    slug: 'weekly-update',
+    title: 'Weekly update',
+    line: 'Short: what shipped, the numbers, next week, blockers',
+    text: weeklyUpdate,
+  },
+  {
+    slug: 'project-brief',
+    title: 'Project brief',
+    line: 'Goal, scope in and out, stakeholders, timeline, budget, metrics',
+    text: projectBrief,
+  },
+  {
+    slug: 'one-page-business-plan',
+    title: 'One-page business plan',
+    line: 'A lean canvas, the market, the revenue model, 12 months of milestones',
+    text: onePageBusinessPlan,
+  },
+  {
+    slug: 'business-one-pager',
+    title: 'Company one-pager',
+    line: 'For buyers, partners and funders: problem, solution, traction, team, ask',
+    text: businessOnePager,
   },
   { slug: 'blank', title: 'Blank', line: 'A title and one part, to fill in yourself', text: blank },
 ];
