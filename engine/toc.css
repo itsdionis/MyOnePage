@@ -187,3 +187,13 @@ body.tabs .part {
     color: var(--accent);
   }
 }
+@media print {
+  #toc,
+  #tocbtn,
+  .tabstrip {
+    display: none !important;
+  }
+  body.hastoc {
+    padding-left: 0 !important;
+  }
+}

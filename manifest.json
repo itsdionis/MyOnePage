@@ -1,7 +1,7 @@
 {
   "id": "myone-page",
   "name": "MyOnePage",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "minAppVersion": "1.8.7",
   "description": "Turn a note into a one-pager report with stats, charts, tables and a timeline, or start from a template. Edit it in place, export HTML, or share it with your team and get their edits back in the note.",
   "author": "Dionis Lebedev",

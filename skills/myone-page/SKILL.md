@@ -69,9 +69,10 @@ myone.page: true
 # One onboarding for every plan.
 # Goal: ==60% finish setup by December==.
 
-Who it is for, date, sources. This paragraph is the subtitle.
+58% of signups quit before setup ends; one onboarding for every plan fixes that. We need an owner for each step
+by Friday. Product team, October 2026, numbers from the last 30 days. This paragraph is the subtitle.
 
-## PART 1 · Where we are
+## 01 · Setup is where we lose people
 note shown on the right of the divider
 
 ### Small uppercase heading
@@ -81,12 +82,13 @@ note shown on the right of the divider
 
 - Frontmatter: `myone.page: true` (Obsidian opens the note as the page; without it the note opens as
   plain Markdown), `title` (tab title), `updated` (`YYYY-MM-DD`, bumped on every save from the page),
-  `lang` (default `ru`; set it), `view` (`tabs` opens the page as one tab per section; default `scroll`).
+  `lang` (default `ru`; set it), `view` (`tabs` opens the page as one tab per section, for reference pages whose sections stand alone;
+  default `scroll`, which suits a brief meant to be skimmed).
   Other keys (`tags`, `aliases`…) are kept as they are.
 - Each `## ` part starts a section. The page lists sections in a side menu and can show them as tabs, so
   long pages should be split into parts.
 - Hero: the `# ` lines at the very top, one per line. The last line may hold one `==highlight==`
-  (accent colour); text after it is the tail. The first paragraph after them is the subtitle.
+  (accent colour); text after it is the tail. The first paragraph after them is the subtitle. Both carry the answer: see **Make it read** below.
 - Blocks are separated by one blank line. Do not put blank lines inside a block, except the `>` line
   between columns or cells of `[!cmdcols]` and `[!canvas]`.
 
@@ -169,7 +171,7 @@ is understood; any other Mermaid diagram stays plain text.
 ````markdown
 ```mermaid
 gantt
-  title Q4 roadmap
+  title Launch on December 1
   dateFormat YYYY-MM-DD
   section Product
     New pricing page :done, plans, 2026-10-01, 2026-10-12
@@ -204,7 +206,7 @@ A Mermaid pie chart: Obsidian draws it natively, the page draws a donut with a l
 ````markdown
 ```mermaid
 pie
-  title Hours by kind of work
+  title Building takes half the week
   "Building" : 18
   "Sales calls" : 9
   "Support" : 6
@@ -225,7 +227,7 @@ A Mermaid xychart: Obsidian draws it natively, the page draws its own version.
 ````markdown
 ```mermaid
 xychart-beta
-  title "Revenue by month"
+  title "Revenue up 64% since January"
   x-axis "Month" ["Jan", "Feb", "Mar", "Apr"]
   y-axis "Revenue, $k"
   bar [50, 60, 75, 82]
@@ -277,6 +279,42 @@ the formatter adds the backslash if you forget. Inside a bold slot (`**42**`, `*
 - A title after a list callout type (`> [!stats] Title`): only `[!lineage]` takes one. Put a
   `### Heading` above the block instead.
 - HTML. It shows as literal text.
+
+## Make it read
+
+Most readers skim: they take in the first screen and the first two words of each heading and list item, then stop,
+or read on where it matters to them. Write for both.
+
+- **Answer first.** The hero lines state the conclusion or decision, not the topic; the `==highlight==` is the one
+  number or verdict to remember. The subtitle says why it matters to this reader and what you need from them, by
+  when, in two or three sentences; who it is for, the date and the sources go at its end.
+- **The first screen carries the page.** Hero, subtitle, then one block (`stats`, or a few `rule` lines) with the 3
+  to 5 points behind the answer. A reader who stops there still knows it.
+- **One ask.** If the page needs something, ask once, plainly, with an owner and a date. Several: an `ol`, the most
+  important first.
+- **Headings say what the part found, not what it is about:** `## 01 · Setup loses half of signups`, not
+  `## 01 · Where we are`, never a bare "Overview" or "Background". Words that carry meaning first. Give every part a
+  heading. When a template names its parts (Problem, Appetite…), keep the names and put the finding in the note line
+  under the part.
+- **Each part opens with its point** (a `**Verdict:**` rule line, say); the evidence follows.
+- **Fewer words.** Cut every sentence that is useful but not needed: a one-pager is about 300 to 600 words outside
+  tables. Sentences under 25 words, paragraphs of 3 sentences at most, plain words, no hype.
+- **Lists of 3 to 5 items** (7 at most): one idea each, all the same kind of thing, the most important first, two
+  lines at most, and not all starting with the same words (readers skip those).
+- **Blocks for parallel items, sentences for reasoning.** Facts, options, steps, risks go in blocks. An argument
+  ("because", "so") goes in `rule` lines or plain text, never split across cards. Never leave the key caveat last.
+- **Bold little:** a rule's lead and at most one phrase per block. Bold everywhere reads as bold nowhere.
+- **Pick the block by the shape of the content,** not to add visuals: exact values, or 3+ options on 3+ attributes:
+  `table`; 1 to 4 headline numbers: `stats`; a funnel: `cascade`; a real sequence of 4+ steps: `flow`; dates:
+  `gantt`; shares of a whole: `pie`; a trend or a comparison: `bar`. If a numbered list says the same, use the list.
+  For insiders, prefer dense tables and short rule lines; for outsiders, one explanatory `flow` or `cascade` helps.
+- **Every table and chart gets a `### ` heading above it that states the finding,** and a chart's `title` names the
+  outcome ("Launch on December 1"), not the topic ("Q4 roadmap").
+- **Nothing decorative:** no filler emoji, fun facts or anecdotes that do not move the argument; decoration lowers
+  understanding. At most one `[!lineage]` callout per part, for a takeaway, a decision or a risk.
+- **Write for a phone and for AI summaries:** tables of 5 columns and about 10 rows at most, short cells. State
+  conclusions, numbers and risks outright: people overrate what they understood on a screen, and an AI summary
+  passes on only what the page says plainly.
 
 <!-- /prompt -->
 

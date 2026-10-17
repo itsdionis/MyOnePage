@@ -39,7 +39,7 @@ ${FORMAT}
 ## Rules
 
 1. Start with the frontmatter: \`title\`, \`updated: ${today()}\`, \`lang\` (the language of my notes, two letters), \`myone.page: true\`. Write the page in that language.
-2. Then one to three \`# \` hero lines, the last one with one ==highlight==, and a one-paragraph subtitle.
+2. Then one to three \`# \` hero lines that give the answer, not the topic, the last one with one ==highlight==, and a subtitle: why it matters to the reader and what the page asks of them (Make it read, above).
 3. Split the page into \`## \` parts, and use the blocks from the table: numbers as stats, steps as flow, comparisons as tables. Anything else shows as plain text.
 4. Keep every fact from my notes and invent none: no numbers, names or dates that are not in them.
 5. One blank line between blocks, none inside a block. No HTML. Write \\$ for a dollar sign.${outline}

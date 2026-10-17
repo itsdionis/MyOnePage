@@ -16,6 +16,7 @@ document.body.insertAdjacentHTML(
   <button id="edit" title="click any text for a quick edit; this is full editing: drag, add and delete blocks">✎ edit</button>
   <button id="dl" title="download the page as Markdown">MD</button>
   <button id="html" title="download one HTML file to share">HTML</button>
+  <button id="pdf" title="save the page as a PDF: in the print dialog, choose Save as PDF">PDF</button>
   <button id="scheme"></button>
 </div>`,
 );
@@ -1737,6 +1738,32 @@ ${esc(js, 'script')}
   a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
   a.download = fileName('.html');
   a.click();
+};
+// PDF: the browser's print dialog, where Save as PDF keeps the page alone: no side contents or bar (@media print in
+// engine.css and toc.css), every section in the tabs view, and light colours, since a dark page prints badly. The
+// browser's own Print (Cmd+P) does the same through beforeprint; afterprint puts the page back.
+let PAPER = null;
+function toPaper() {
+  if (PAPER) return;
+  PAPER = { scheme: ROOT.dataset.scheme };
+  document.activeElement?.blur?.(); // a quick edit in progress keeps its text and loses its outline
+  if (isEdit()) document.getElementById('edit').click();
+  ROOT.dataset.scheme = 'light';
+  document.body.classList.remove('tabs');
+  document.querySelectorAll('section.blk.off').forEach((el) => el.classList.remove('off'));
+}
+function fromPaper() {
+  if (!PAPER) return;
+  if (PAPER.scheme) ROOT.dataset.scheme = PAPER.scheme;
+  else delete ROOT.dataset.scheme;
+  PAPER = null;
+  if (document.body.classList.contains('hastoc')) applyView();
+}
+addEventListener('beforeprint', toPaper);
+addEventListener('afterprint', fromPaper);
+document.getElementById('pdf').onclick = () => {
+  toPaper();
+  print();
 };
 document.addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === 's') {

@@ -1,6 +1,6 @@
 {
   "name": "myone-page",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "private": true,
   "description": "Obsidian plugin: turn a note into a one-pager report with stats, charts, tables and a timeline, or start from a template. Edit it in place, export HTML, or share it with your team and get their edits back in the note.",
   "license": "MIT",

@@ -94,6 +94,8 @@ title: Q4 plan
   brings the page back. **Cycle view: editing, reading, one-pager** does the same from the command palette.
 - **HTML** saves `<note>.html`: one read-only file you can send to anyone. It goes next to the note, or to the
   folder set in **HTML export folder** in the plugin settings.
+- **PDF** opens the print dialog with the page alone (no section list, every section, light colours): choose
+  **Save as PDF** there. Desktop only.
 - **Themes**: seven looks, each light and dark (see [Themes](#themes)).
 - The page follows Obsidian's light or dark mode; **☀** / **☾** in the bar (or **Light or dark** in the settings)
   picks one for every page instead.

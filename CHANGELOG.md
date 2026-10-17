@@ -1,6 +1,18 @@
 # Changelog
 
-## 1.0.8 (unreleased)
+## 1.0.9 (unreleased)
+
+- **PDF** in the page's bar saves the page as a PDF: it opens the print dialog, where you choose Save as PDF. The PDF
+  has the page alone, without the section list or the bar, every section even in the tabs view, in light colours on
+  white paper; tables and timelines fit the paper's width. On desktop; Obsidian mobile has no print dialog for it.
+- **×** on a block while editing (delete the whole block) asks first and then deletes it. In Obsidian it did nothing
+  before.
+- **Pages people read**: the skill and **Make a page with AI** now write for readers who skim. The answer goes in
+  the hero and the subtitle, the first screen carries the whole page, headings say what each part found, lists keep
+  to 3 to 5 items, a table or chart's heading states its finding, and nothing is there for decoration. The rules come
+  from eye-tracking studies, field experiments on short messages and research on visuals.
+
+## 1.0.8
 
 - No more style warnings in Obsidian's plugin check. Pages look the same, on older iPhones and iPads too.
 

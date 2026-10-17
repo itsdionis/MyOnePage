@@ -1,7 +1,18 @@
 // Obsidian plugin: opens a note as a MyOnePage. The engine (md.js, engine.js, engine.css) runs unchanged
 // inside a sandboxed iframe; a shim stands in for the server: its fetch GET reads the note, PUT writes it.
 // esbuild bundles it into main.js, with the engine files as text (`?text`, see esbuild.config.mjs).
-import { Plugin, TextFileView, MarkdownView, Notice, Modal, TFile, TFolder, normalizePath, setIcon } from 'obsidian';
+import {
+  Plugin,
+  TextFileView,
+  MarkdownView,
+  Notice,
+  Modal,
+  TFile,
+  TFolder,
+  normalizePath,
+  setIcon,
+  Platform,
+} from 'obsidian';
 import type { WorkspaceLeaf, View } from 'obsidian';
 import css from '../engine/engine.css?text';
 import toc from '../engine/toc.css?text';
@@ -66,10 +77,11 @@ export interface Prefs extends LookPrefs {
 }
 type Mode = 'source' | 'preview';
 
+// No MD button (the note is the Markdown), and no PDF on mobile, which has no print dialog for the page.
 function page(prefs: LookPrefs) {
   return `<!doctype html><html ${lookAttrs(prefs)}><head><meta charset="utf-8">
 <style>${esc(ENGINE.css, 'style')}
-#dl{display:none}</style></head><body>
+#dl{display:none}${Platform.isMobile ? '#pdf{display:none}' : ''}</style></head><body>
 <script>${esc(SHIM, 'script')}</script>
 <script>${esc(ENGINE.md, 'script')}</script>
 <script>${esc(ENGINE.js, 'script')}</script>
@@ -168,7 +180,11 @@ class MyOnePageView extends TextFileView {
     this.sample = this.contentEl.createDiv('myone-page-sample');
     this.refreshSample();
     this.frame = this.contentEl.createEl('iframe', { cls: 'myone-page-frame' });
-    this.frame.setAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox allow-downloads');
+    // allow-modals: the print dialog of the PDF button, and the question before deleting a block
+    this.frame.setAttribute(
+      'sandbox',
+      'allow-scripts allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads',
+    );
     this.frame.srcdoc = page(this.plugin.prefs);
   }
 

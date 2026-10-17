@@ -1767,18 +1767,92 @@ body:not(.edit) [data-p][contenteditable='true'] {
     background: color-mix(in srgb, var(--dim) 7%, transparent);
   }
 }
-/* read only (a viewer): the bar keeps only the HTML download; a downloaded file (body.file) has no bar */
+/* read only (a viewer): the bar keeps only the HTML and PDF downloads; a downloaded file (body.file) has no bar */
 body.print #bar {
   padding: 7px 9px;
 }
-body.print #bar > :not(#html, #scheme),
+body.print #bar > :not(#html, #pdf, #scheme),
 body.file #bar {
   display: none;
 }
+/* a phone: the full bar has no room for PDF (the browser's own Print still gives the same PDF, engine.js toPaper()) */
+@media (max-width: 480px) {
+  body:not(.print) #pdf {
+    display: none;
+  }
+}
+/* paper and PDF (the PDF button or the browser's Print; engine.js toPaper() makes the page light and shows every
+   section): the page alone, with its colours, bars and charts as on screen, in the paper's width */
+@page {
+  margin: 14mm 12mm;
+}
 @media print {
   #bar,
+  #palette,
   .flag {
     display: none;
+  }
+  html {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body {
+    padding: 0;
+    background: none; /* white paper: a theme's tinted page would print as a box inside white margins */
+  }
+  /* a scroll does not print: tables and timelines take the paper's width, and on paper narrower than their screen
+     width (760px) they shrink a little (@container below) rather than squeeze their columns */
+  .tbl,
+  .gantt {
+    min-width: 0;
+  }
+  .tbl {
+    -webkit-box-decoration-break: clone; /* a table on two pages: a closed box on each */
+    box-decoration-break: clone;
+  }
+  .part,
+  h2,
+  .gtitle,
+  .trow.th {
+    break-after: avoid;
+  }
+  .card,
+  .stat,
+  .u,
+  .step,
+  .col,
+  .pie,
+  .xy,
+  .lineage,
+  .lcc,
+  .trow,
+  .grow,
+  .cmd,
+  .fstep,
+  li {
+    break-inside: avoid;
+  }
+  .tscroll,
+  .gscroll {
+    container-type: inline-size; /* the paper's width, which print media queries do not give (Chrome) */
+  }
+  @container (max-width: 759px) {
+    .tbl,
+    .gantt {
+      zoom: 0.92;
+    }
+  }
+  @container (max-width: 699px) {
+    .tbl,
+    .gantt {
+      zoom: 0.84;
+    }
+  }
+  @container (max-width: 639px) {
+    .tbl,
+    .gantt {
+      zoom: 0.76;
+    }
   }
 }
 
