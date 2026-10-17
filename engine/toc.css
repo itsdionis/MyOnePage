@@ -188,12 +188,14 @@ body.tabs .part {
   }
 }
 @media print {
-  #toc,
-  #tocbtn,
-  .tabstrip {
-    display: none !important;
+  /* doubled to outrank the screen rules above (body.hastoc.tocopen #toc, body.tabs .tabstrip, body.hastoc.tocshut)
+     without an important flag, which Obsidian's CSS check warns about */
+  #toc#toc,
+  #tocbtn#tocbtn,
+  body.tabs.tabs .tabstrip {
+    display: none;
   }
-  body.hastoc {
-    padding-left: 0 !important;
+  body.hastoc.hastoc {
+    padding-left: 0;
   }
 }

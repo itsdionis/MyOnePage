@@ -1,6 +1,10 @@
 # Changelog
 
-## 1.0.9 (unreleased)
+## 1.0.10 (unreleased)
+
+- No more style warnings in Obsidian's plugin check. Pages and their PDFs look the same.
+
+## 1.0.9
 
 - **PDF** in the page's bar saves the page as a PDF: it opens the print dialog, where you choose Save as PDF. The PDF
   has the page alone, without the section list or the bar, every section even in the tabs view, in light colours on

@@ -1806,15 +1806,12 @@ body.file #bar {
   .gantt {
     min-width: 0;
   }
-  .tbl {
-    -webkit-box-decoration-break: clone; /* a table on two pages: a closed box on each */
-    box-decoration-break: clone;
-  }
+  /* page-break-*, which Chrome reads as break-*: Obsidian's CSS check counts break-* as multi-column layout */
   .part,
   h2,
   .gtitle,
   .trow.th {
-    break-after: avoid;
+    page-break-after: avoid;
   }
   .card,
   .stat,
@@ -1830,7 +1827,7 @@ body.file #bar {
   .cmd,
   .fstep,
   li {
-    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .tscroll,
   .gscroll {
